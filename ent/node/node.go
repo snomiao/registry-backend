@@ -3,6 +3,8 @@
 package node
 
 import (
+	"fmt"
+	"registry-backend/ent/schema"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
@@ -24,6 +26,8 @@ const (
 	FieldName = "name"
 	// FieldDescription holds the string denoting the description field in the database.
 	FieldDescription = "description"
+	// FieldCategory holds the string denoting the category field in the database.
+	FieldCategory = "category"
 	// FieldAuthor holds the string denoting the author field in the database.
 	FieldAuthor = "author"
 	// FieldLicense holds the string denoting the license field in the database.
@@ -34,10 +38,22 @@ const (
 	FieldIconURL = "icon_url"
 	// FieldTags holds the string denoting the tags field in the database.
 	FieldTags = "tags"
+	// FieldTotalInstall holds the string denoting the total_install field in the database.
+	FieldTotalInstall = "total_install"
+	// FieldTotalStar holds the string denoting the total_star field in the database.
+	FieldTotalStar = "total_star"
+	// FieldTotalReview holds the string denoting the total_review field in the database.
+	FieldTotalReview = "total_review"
+	// FieldStatus holds the string denoting the status field in the database.
+	FieldStatus = "status"
+	// FieldStatusDetail holds the string denoting the status_detail field in the database.
+	FieldStatusDetail = "status_detail"
 	// EdgePublisher holds the string denoting the publisher edge name in mutations.
 	EdgePublisher = "publisher"
 	// EdgeVersions holds the string denoting the versions edge name in mutations.
 	EdgeVersions = "versions"
+	// EdgeReviews holds the string denoting the reviews edge name in mutations.
+	EdgeReviews = "reviews"
 	// Table holds the table name of the node in the database.
 	Table = "nodes"
 	// PublisherTable is the table that holds the publisher relation/edge.
@@ -54,6 +70,13 @@ const (
 	VersionsInverseTable = "node_versions"
 	// VersionsColumn is the table column denoting the versions relation/edge.
 	VersionsColumn = "node_id"
+	// ReviewsTable is the table that holds the reviews relation/edge.
+	ReviewsTable = "node_reviews"
+	// ReviewsInverseTable is the table name for the NodeReview entity.
+	// It exists in this package in order to avoid circular dependency with the "nodereview" package.
+	ReviewsInverseTable = "node_reviews"
+	// ReviewsColumn is the table column denoting the reviews relation/edge.
+	ReviewsColumn = "node_id"
 )
 
 // Columns holds all SQL columns for node fields.
@@ -64,11 +87,17 @@ var Columns = []string{
 	FieldPublisherID,
 	FieldName,
 	FieldDescription,
+	FieldCategory,
 	FieldAuthor,
 	FieldLicense,
 	FieldRepositoryURL,
 	FieldIconURL,
 	FieldTags,
+	FieldTotalInstall,
+	FieldTotalStar,
+	FieldTotalReview,
+	FieldStatus,
+	FieldStatusDetail,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -90,7 +119,25 @@ var (
 	UpdateDefaultUpdateTime func() time.Time
 	// DefaultTags holds the default value on creation for the "tags" field.
 	DefaultTags []string
+	// DefaultTotalInstall holds the default value on creation for the "total_install" field.
+	DefaultTotalInstall int64
+	// DefaultTotalStar holds the default value on creation for the "total_star" field.
+	DefaultTotalStar int64
+	// DefaultTotalReview holds the default value on creation for the "total_review" field.
+	DefaultTotalReview int64
 )
+
+const DefaultStatus schema.NodeStatus = "active"
+
+// StatusValidator is a validator for the "status" field enum values. It is called by the builders before save.
+func StatusValidator(s schema.NodeStatus) error {
+	switch s {
+	case "active", "banned", "deleted":
+		return nil
+	default:
+		return fmt.Errorf("node: invalid enum value for status field: %q", s)
+	}
+}
 
 // OrderOption defines the ordering options for the Node queries.
 type OrderOption func(*sql.Selector)
@@ -125,6 +172,11 @@ func ByDescription(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDescription, opts...).ToFunc()
 }
 
+// ByCategory orders the results by the category field.
+func ByCategory(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCategory, opts...).ToFunc()
+}
+
 // ByAuthor orders the results by the author field.
 func ByAuthor(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAuthor, opts...).ToFunc()
@@ -143,6 +195,31 @@ func ByRepositoryURL(opts ...sql.OrderTermOption) OrderOption {
 // ByIconURL orders the results by the icon_url field.
 func ByIconURL(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldIconURL, opts...).ToFunc()
+}
+
+// ByTotalInstall orders the results by the total_install field.
+func ByTotalInstall(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTotalInstall, opts...).ToFunc()
+}
+
+// ByTotalStar orders the results by the total_star field.
+func ByTotalStar(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTotalStar, opts...).ToFunc()
+}
+
+// ByTotalReview orders the results by the total_review field.
+func ByTotalReview(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTotalReview, opts...).ToFunc()
+}
+
+// ByStatus orders the results by the status field.
+func ByStatus(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldStatus, opts...).ToFunc()
+}
+
+// ByStatusDetail orders the results by the status_detail field.
+func ByStatusDetail(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldStatusDetail, opts...).ToFunc()
 }
 
 // ByPublisherField orders the results by publisher field.
@@ -165,6 +242,20 @@ func ByVersions(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newVersionsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByReviewsCount orders the results by reviews count.
+func ByReviewsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newReviewsStep(), opts...)
+	}
+}
+
+// ByReviews orders the results by reviews terms.
+func ByReviews(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newReviewsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newPublisherStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -177,5 +268,12 @@ func newVersionsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(VersionsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, VersionsTable, VersionsColumn),
+	)
+}
+func newReviewsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ReviewsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ReviewsTable, ReviewsColumn),
 	)
 }

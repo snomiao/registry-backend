@@ -4,14 +4,21 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/http"
+	"net/http/httptest"
+	"reflect"
+	"registry-backend/drip"
+	auth "registry-backend/server/middleware/authentication"
+	"runtime"
+	"strings"
 
 	"registry-backend/ent"
 	"registry-backend/ent/migrate"
-	auth "registry-backend/server/middleware"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
@@ -29,6 +36,16 @@ func createTestUser(ctx context.Context, client *ent.Client) *ent.User {
 		SaveX(ctx)
 }
 
+func createAdminUser(ctx context.Context, client *ent.Client) *ent.User {
+	return client.User.Create().
+		SetID(uuid.New().String()).
+		SetIsApproved(true).
+		SetIsAdmin(true).
+		SetName("admin").
+		SetEmail("admin@gmail.com").
+		SaveX(ctx)
+}
+
 func decorateUserInContext(ctx context.Context, user *ent.User) context.Context {
 	return context.WithValue(ctx, auth.UserContextKey, &auth.UserDetails{
 		ID:    user.ID,
@@ -37,7 +54,7 @@ func decorateUserInContext(ctx context.Context, user *ent.User) context.Context 
 	})
 }
 
-func setupDB(t *testing.T, ctx context.Context) (*ent.Client, *postgres.PostgresContainer) {
+func setupDB(t *testing.T, ctx context.Context) (client *ent.Client, cleanup func()) {
 	// Define Postgres container request
 	postgresContainer, err := postgres.RunContainer(ctx,
 		testcontainers.WithImage("docker.io/postgres:15.2-alpine"),
@@ -69,7 +86,7 @@ func setupDB(t *testing.T, ctx context.Context) (*ent.Client, *postgres.Postgres
 		t.Fatalf("Failed to start container: %s", err)
 	}
 
-	client, err := ent.Open("postgres", databaseURL)
+	client, err = ent.Open("postgres", databaseURL)
 	if err != nil {
 		log.Ctx(ctx).Fatal().Err(err).Msg("failed opening connection to postgres")
 	}
@@ -81,7 +98,13 @@ func setupDB(t *testing.T, ctx context.Context) (*ent.Client, *postgres.Postgres
 
 	}
 	println("Schema created")
-	return client, postgresContainer
+
+	cleanup = func() {
+		if err := postgresContainer.Terminate(ctx); err != nil {
+			log.Ctx(ctx).Error().Msgf("failed to terminate container: %s", err)
+		}
+	}
+	return
 }
 
 func waitPortOpen(t *testing.T, host string, port string, timeout time.Duration) {
@@ -107,5 +130,27 @@ func waitPortOpen(t *testing.T, host string, port string, timeout time.Duration)
 		conn.Close()
 		return
 	}
+}
 
+func withMiddleware[R any, S any](mw drip.StrictMiddlewareFunc, h func(ctx context.Context, req R) (res S, err error)) func(ctx context.Context, req R) (res S, err error) {
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return h(ctx.Request().Context(), request.(R))
+	}
+
+	nameA := strings.Split(runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name(), ".")
+	nameA = strings.Split(nameA[len(nameA)-1], "-")
+	opname := nameA[0]
+
+	return func(ctx context.Context, req R) (res S, err error) {
+		fakeReq := httptest.NewRequest(http.MethodGet, "/", nil).WithContext(ctx)
+		fakeRes := httptest.NewRecorder()
+		fakeCtx := echo.New().NewContext(fakeReq, fakeRes)
+
+		f := mw(handler, opname)
+		r, err := f(fakeCtx, req)
+		if r == nil {
+			return *new(S), err
+		}
+		return r.(S), err
+	}
 }

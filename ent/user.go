@@ -4,6 +4,7 @@ package ent
 
 import (
 	"fmt"
+	"registry-backend/ent/schema"
 	"registry-backend/ent/user"
 	"strings"
 	"time"
@@ -30,6 +31,8 @@ type User struct {
 	IsApproved bool `json:"is_approved,omitempty"`
 	// Whether the user is approved to use the platform
 	IsAdmin bool `json:"is_admin,omitempty"`
+	// Status holds the value of the "status" field.
+	Status schema.UserStatusType `json:"status,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the UserQuery when eager-loading is set.
 	Edges        UserEdges `json:"edges"`
@@ -40,9 +43,11 @@ type User struct {
 type UserEdges struct {
 	// PublisherPermissions holds the value of the publisher_permissions edge.
 	PublisherPermissions []*PublisherPermission `json:"publisher_permissions,omitempty"`
+	// Reviews holds the value of the reviews edge.
+	Reviews []*NodeReview `json:"reviews,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 }
 
 // PublisherPermissionsOrErr returns the PublisherPermissions value or an error if the edge
@@ -54,6 +59,15 @@ func (e UserEdges) PublisherPermissionsOrErr() ([]*PublisherPermission, error) {
 	return nil, &NotLoadedError{edge: "publisher_permissions"}
 }
 
+// ReviewsOrErr returns the Reviews value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) ReviewsOrErr() ([]*NodeReview, error) {
+	if e.loadedTypes[1] {
+		return e.Reviews, nil
+	}
+	return nil, &NotLoadedError{edge: "reviews"}
+}
+
 // scanValues returns the types for scanning values from sql.Rows.
 func (*User) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
@@ -61,7 +75,7 @@ func (*User) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case user.FieldIsApproved, user.FieldIsAdmin:
 			values[i] = new(sql.NullBool)
-		case user.FieldID, user.FieldEmail, user.FieldName:
+		case user.FieldID, user.FieldEmail, user.FieldName, user.FieldStatus:
 			values[i] = new(sql.NullString)
 		case user.FieldCreateTime, user.FieldUpdateTime:
 			values[i] = new(sql.NullTime)
@@ -122,6 +136,12 @@ func (u *User) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				u.IsAdmin = value.Bool
 			}
+		case user.FieldStatus:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field status", values[i])
+			} else if value.Valid {
+				u.Status = schema.UserStatusType(value.String)
+			}
 		default:
 			u.selectValues.Set(columns[i], values[i])
 		}
@@ -138,6 +158,11 @@ func (u *User) Value(name string) (ent.Value, error) {
 // QueryPublisherPermissions queries the "publisher_permissions" edge of the User entity.
 func (u *User) QueryPublisherPermissions() *PublisherPermissionQuery {
 	return NewUserClient(u.config).QueryPublisherPermissions(u)
+}
+
+// QueryReviews queries the "reviews" edge of the User entity.
+func (u *User) QueryReviews() *NodeReviewQuery {
+	return NewUserClient(u.config).QueryReviews(u)
 }
 
 // Update returns a builder for updating this User.
@@ -180,6 +205,9 @@ func (u *User) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("is_admin=")
 	builder.WriteString(fmt.Sprintf("%v", u.IsAdmin))
+	builder.WriteString(", ")
+	builder.WriteString("status=")
+	builder.WriteString(fmt.Sprintf("%v", u.Status))
 	builder.WriteByte(')')
 	return builder.String()
 }

@@ -3,6 +3,8 @@
 package user
 
 import (
+	"fmt"
+	"registry-backend/ent/schema"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
@@ -26,8 +28,12 @@ const (
 	FieldIsApproved = "is_approved"
 	// FieldIsAdmin holds the string denoting the is_admin field in the database.
 	FieldIsAdmin = "is_admin"
+	// FieldStatus holds the string denoting the status field in the database.
+	FieldStatus = "status"
 	// EdgePublisherPermissions holds the string denoting the publisher_permissions edge name in mutations.
 	EdgePublisherPermissions = "publisher_permissions"
+	// EdgeReviews holds the string denoting the reviews edge name in mutations.
+	EdgeReviews = "reviews"
 	// Table holds the table name of the user in the database.
 	Table = "users"
 	// PublisherPermissionsTable is the table that holds the publisher_permissions relation/edge.
@@ -37,6 +43,13 @@ const (
 	PublisherPermissionsInverseTable = "publisher_permissions"
 	// PublisherPermissionsColumn is the table column denoting the publisher_permissions relation/edge.
 	PublisherPermissionsColumn = "user_id"
+	// ReviewsTable is the table that holds the reviews relation/edge.
+	ReviewsTable = "node_reviews"
+	// ReviewsInverseTable is the table name for the NodeReview entity.
+	// It exists in this package in order to avoid circular dependency with the "nodereview" package.
+	ReviewsInverseTable = "node_reviews"
+	// ReviewsColumn is the table column denoting the reviews relation/edge.
+	ReviewsColumn = "user_id"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -48,6 +61,7 @@ var Columns = []string{
 	FieldName,
 	FieldIsApproved,
 	FieldIsAdmin,
+	FieldStatus,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -72,6 +86,18 @@ var (
 	// DefaultIsAdmin holds the default value on creation for the "is_admin" field.
 	DefaultIsAdmin bool
 )
+
+const DefaultStatus schema.UserStatusType = "ACTIVE"
+
+// StatusValidator is a validator for the "status" field enum values. It is called by the builders before save.
+func StatusValidator(s schema.UserStatusType) error {
+	switch s {
+	case "ACTIVE", "BANNED":
+		return nil
+	default:
+		return fmt.Errorf("user: invalid enum value for status field: %q", s)
+	}
+}
 
 // OrderOption defines the ordering options for the User queries.
 type OrderOption func(*sql.Selector)
@@ -111,6 +137,11 @@ func ByIsAdmin(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldIsAdmin, opts...).ToFunc()
 }
 
+// ByStatus orders the results by the status field.
+func ByStatus(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldStatus, opts...).ToFunc()
+}
+
 // ByPublisherPermissionsCount orders the results by publisher_permissions count.
 func ByPublisherPermissionsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -124,10 +155,31 @@ func ByPublisherPermissions(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOpt
 		sqlgraph.OrderByNeighborTerms(s, newPublisherPermissionsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByReviewsCount orders the results by reviews count.
+func ByReviewsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newReviewsStep(), opts...)
+	}
+}
+
+// ByReviews orders the results by reviews terms.
+func ByReviews(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newReviewsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newPublisherPermissionsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(PublisherPermissionsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, PublisherPermissionsTable, PublisherPermissionsColumn),
+	)
+}
+func newReviewsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ReviewsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ReviewsTable, ReviewsColumn),
 	)
 }

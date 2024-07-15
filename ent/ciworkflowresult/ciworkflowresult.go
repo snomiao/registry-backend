@@ -3,6 +3,7 @@
 package ciworkflowresult
 
 import (
+	"registry-backend/ent/schema"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
@@ -21,20 +22,34 @@ const (
 	FieldUpdateTime = "update_time"
 	// FieldOperatingSystem holds the string denoting the operating_system field in the database.
 	FieldOperatingSystem = "operating_system"
-	// FieldGpuType holds the string denoting the gpu_type field in the database.
-	FieldGpuType = "gpu_type"
-	// FieldPytorchVersion holds the string denoting the pytorch_version field in the database.
-	FieldPytorchVersion = "pytorch_version"
 	// FieldWorkflowName holds the string denoting the workflow_name field in the database.
 	FieldWorkflowName = "workflow_name"
 	// FieldRunID holds the string denoting the run_id field in the database.
 	FieldRunID = "run_id"
+	// FieldJobID holds the string denoting the job_id field in the database.
+	FieldJobID = "job_id"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
 	// FieldStartTime holds the string denoting the start_time field in the database.
 	FieldStartTime = "start_time"
 	// FieldEndTime holds the string denoting the end_time field in the database.
 	FieldEndTime = "end_time"
+	// FieldPythonVersion holds the string denoting the python_version field in the database.
+	FieldPythonVersion = "python_version"
+	// FieldPytorchVersion holds the string denoting the pytorch_version field in the database.
+	FieldPytorchVersion = "pytorch_version"
+	// FieldCudaVersion holds the string denoting the cuda_version field in the database.
+	FieldCudaVersion = "cuda_version"
+	// FieldComfyRunFlags holds the string denoting the comfy_run_flags field in the database.
+	FieldComfyRunFlags = "comfy_run_flags"
+	// FieldAvgVram holds the string denoting the avg_vram field in the database.
+	FieldAvgVram = "avg_vram"
+	// FieldPeakVram holds the string denoting the peak_vram field in the database.
+	FieldPeakVram = "peak_vram"
+	// FieldJobTriggerUser holds the string denoting the job_trigger_user field in the database.
+	FieldJobTriggerUser = "job_trigger_user"
+	// FieldMetadata holds the string denoting the metadata field in the database.
+	FieldMetadata = "metadata"
 	// EdgeGitcommit holds the string denoting the gitcommit edge name in mutations.
 	EdgeGitcommit = "gitcommit"
 	// EdgeStorageFile holds the string denoting the storage_file edge name in mutations.
@@ -49,7 +64,7 @@ const (
 	// GitcommitColumn is the table column denoting the gitcommit relation/edge.
 	GitcommitColumn = "git_commit_results"
 	// StorageFileTable is the table that holds the storage_file relation/edge.
-	StorageFileTable = "ci_workflow_results"
+	StorageFileTable = "storage_files"
 	// StorageFileInverseTable is the table name for the StorageFile entity.
 	// It exists in this package in order to avoid circular dependency with the "storagefile" package.
 	StorageFileInverseTable = "storage_files"
@@ -63,19 +78,25 @@ var Columns = []string{
 	FieldCreateTime,
 	FieldUpdateTime,
 	FieldOperatingSystem,
-	FieldGpuType,
-	FieldPytorchVersion,
 	FieldWorkflowName,
 	FieldRunID,
+	FieldJobID,
 	FieldStatus,
 	FieldStartTime,
 	FieldEndTime,
+	FieldPythonVersion,
+	FieldPytorchVersion,
+	FieldCudaVersion,
+	FieldComfyRunFlags,
+	FieldAvgVram,
+	FieldPeakVram,
+	FieldJobTriggerUser,
+	FieldMetadata,
 }
 
 // ForeignKeys holds the SQL foreign-keys that are owned by the "ci_workflow_results"
 // table and are not defined as standalone fields in the schema.
 var ForeignKeys = []string{
-	"ci_workflow_result_storage_file",
 	"git_commit_results",
 }
 
@@ -101,6 +122,8 @@ var (
 	DefaultUpdateTime func() time.Time
 	// UpdateDefaultUpdateTime holds the default value on update for the "update_time" field.
 	UpdateDefaultUpdateTime func() time.Time
+	// DefaultStatus holds the default value on creation for the "status" field.
+	DefaultStatus schema.WorkflowRunStatusType
 	// DefaultID holds the default value on creation for the "id" field.
 	DefaultID func() uuid.UUID
 )
@@ -128,16 +151,6 @@ func ByOperatingSystem(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldOperatingSystem, opts...).ToFunc()
 }
 
-// ByGpuType orders the results by the gpu_type field.
-func ByGpuType(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldGpuType, opts...).ToFunc()
-}
-
-// ByPytorchVersion orders the results by the pytorch_version field.
-func ByPytorchVersion(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldPytorchVersion, opts...).ToFunc()
-}
-
 // ByWorkflowName orders the results by the workflow_name field.
 func ByWorkflowName(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldWorkflowName, opts...).ToFunc()
@@ -146,6 +159,11 @@ func ByWorkflowName(opts ...sql.OrderTermOption) OrderOption {
 // ByRunID orders the results by the run_id field.
 func ByRunID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRunID, opts...).ToFunc()
+}
+
+// ByJobID orders the results by the job_id field.
+func ByJobID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldJobID, opts...).ToFunc()
 }
 
 // ByStatus orders the results by the status field.
@@ -163,6 +181,41 @@ func ByEndTime(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldEndTime, opts...).ToFunc()
 }
 
+// ByPythonVersion orders the results by the python_version field.
+func ByPythonVersion(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPythonVersion, opts...).ToFunc()
+}
+
+// ByPytorchVersion orders the results by the pytorch_version field.
+func ByPytorchVersion(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPytorchVersion, opts...).ToFunc()
+}
+
+// ByCudaVersion orders the results by the cuda_version field.
+func ByCudaVersion(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCudaVersion, opts...).ToFunc()
+}
+
+// ByComfyRunFlags orders the results by the comfy_run_flags field.
+func ByComfyRunFlags(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldComfyRunFlags, opts...).ToFunc()
+}
+
+// ByAvgVram orders the results by the avg_vram field.
+func ByAvgVram(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAvgVram, opts...).ToFunc()
+}
+
+// ByPeakVram orders the results by the peak_vram field.
+func ByPeakVram(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPeakVram, opts...).ToFunc()
+}
+
+// ByJobTriggerUser orders the results by the job_trigger_user field.
+func ByJobTriggerUser(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldJobTriggerUser, opts...).ToFunc()
+}
+
 // ByGitcommitField orders the results by gitcommit field.
 func ByGitcommitField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -170,10 +223,17 @@ func ByGitcommitField(field string, opts ...sql.OrderTermOption) OrderOption {
 	}
 }
 
-// ByStorageFileField orders the results by storage_file field.
-func ByStorageFileField(field string, opts ...sql.OrderTermOption) OrderOption {
+// ByStorageFileCount orders the results by storage_file count.
+func ByStorageFileCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newStorageFileStep(), sql.OrderByField(field, opts...))
+		sqlgraph.OrderByNeighborsCount(s, newStorageFileStep(), opts...)
+	}
+}
+
+// ByStorageFile orders the results by storage_file terms.
+func ByStorageFile(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newStorageFileStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
 func newGitcommitStep() *sqlgraph.Step {
@@ -187,6 +247,6 @@ func newStorageFileStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(StorageFileInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2O, false, StorageFileTable, StorageFileColumn),
+		sqlgraph.Edge(sqlgraph.O2M, false, StorageFileTable, StorageFileColumn),
 	)
 }

@@ -6,11 +6,16 @@ import (
 	"registry-backend/config"
 	generated "registry-backend/drip"
 	"registry-backend/ent"
+	"registry-backend/gateways/algolia"
+	"registry-backend/gateways/discord"
 	gateway "registry-backend/gateways/slack"
 	"registry-backend/gateways/storage"
 	handler "registry-backend/server/handlers"
 	"registry-backend/server/implementation"
 	drip_middleware "registry-backend/server/middleware"
+	drip_authentication "registry-backend/server/middleware/authentication"
+	drip_authorization "registry-backend/server/middleware/authorization"
+	drip_metric "registry-backend/server/middleware/metric"
 	"strings"
 
 	monitoring "cloud.google.com/go/monitoring/apiv3/v2"
@@ -47,6 +52,7 @@ func (s *Server) Start() error {
 				".comfyci.org",           // Any subdomain of comfyci.org
 				os.Getenv("CORS_ORIGIN"), // Environment-specific allowed origin
 				".comfyregistry.org",
+				".comfy.org",
 			}
 
 			for _, allowed := range allowedOrigins {
@@ -82,7 +88,12 @@ func (s *Server) Start() error {
 		return err
 	}
 
-	slackService := gateway.NewSlackService()
+	slackService := gateway.NewSlackService(s.Config)
+	algoliaService, err := algolia.NewFromEnvOrNoop()
+	if err != nil {
+		return err
+	}
+	discordService := discord.NewDiscordService(s.Config)
 
 	mon, err := monitoring.NewMetricClient(context.Background())
 	if err != nil {
@@ -90,10 +101,15 @@ func (s *Server) Start() error {
 	}
 
 	// Attach implementation of generated oapi strict server.
-	impl := implementation.NewStrictServerImplementation(s.Client, s.Config, storageService, slackService)
+	impl := implementation.NewStrictServerImplementation(s.Client, s.Config, storageService, slackService, discordService, algoliaService)
 
-	var middlewares []generated.StrictMiddlewareFunc
+	// Define middlewares in the order of operations
+	authorizationManager := drip_authorization.NewAuthorizationManager(s.Client, impl.RegistryService)
+	middlewares := []generated.StrictMiddlewareFunc{
+		authorizationManager.AuthorizationMiddleware(),
+	}
 	wrapped := generated.NewStrictHandler(impl, middlewares)
+
 	generated.RegisterHandlers(e, wrapped)
 
 	e.GET("/openapi", handler.SwaggerHandler)
@@ -102,9 +118,10 @@ func (s *Server) Start() error {
 	})
 
 	// Global Middlewares
-	e.Use(drip_middleware.MetricsMiddleware(mon, s.Config))
-	e.Use(drip_middleware.FirebaseMiddleware(s.Client))
-	e.Use(drip_middleware.ServiceAccountAuthMiddleware())
+	e.Use(drip_metric.MetricsMiddleware(mon, s.Config))
+	e.Use(drip_authentication.FirebaseAuthMiddleware(s.Client))
+	e.Use(drip_authentication.ServiceAccountAuthMiddleware())
+	e.Use(drip_authentication.JWTAdminAuthMiddleware(s.Client, s.Config.JWTSecret))
 	e.Use(drip_middleware.ErrorLoggingMiddleware())
 
 	e.Logger.Fatal(e.Start(":8080"))

@@ -27,10 +27,51 @@ const (
 	BearerAuthScopes = "BearerAuth.Scopes"
 )
 
+// Defines values for NodeStatus.
+const (
+	NodeStatusActive  NodeStatus = "NodeStatusActive"
+	NodeStatusBanned  NodeStatus = "NodeStatusBanned"
+	NodeStatusDeleted NodeStatus = "NodeStatusDeleted"
+)
+
+// Defines values for NodeVersionStatus.
+const (
+	NodeVersionStatusActive  NodeVersionStatus = "NodeVersionStatusActive"
+	NodeVersionStatusBanned  NodeVersionStatus = "NodeVersionStatusBanned"
+	NodeVersionStatusDeleted NodeVersionStatus = "NodeVersionStatusDeleted"
+	NodeVersionStatusFlagged NodeVersionStatus = "NodeVersionStatusFlagged"
+	NodeVersionStatusPending NodeVersionStatus = "NodeVersionStatusPending"
+)
+
+// Defines values for PublisherStatus.
+const (
+	PublisherStatusActive PublisherStatus = "PublisherStatusActive"
+	PublisherStatusBanned PublisherStatus = "PublisherStatusBanned"
+)
+
+// Defines values for WorkflowRunStatus.
+const (
+	WorkflowRunStatusCompleted WorkflowRunStatus = "WorkflowRunStatusCompleted"
+	WorkflowRunStatusFailed    WorkflowRunStatus = "WorkflowRunStatusFailed"
+	WorkflowRunStatusStarted   WorkflowRunStatus = "WorkflowRunStatusStarted"
+)
+
 // ActionJobResult defines model for ActionJobResult.
 type ActionJobResult struct {
+	// ActionJobId Identifier of the job this result belongs to
+	ActionJobId *string `json:"action_job_id,omitempty"`
+
 	// ActionRunId Identifier of the run this result belongs to
 	ActionRunId *string `json:"action_run_id,omitempty"`
+
+	// Author The author of the commit
+	Author *string `json:"author,omitempty"`
+
+	// AvgVram The average VRAM used by the job
+	AvgVram *int `json:"avg_vram,omitempty"`
+
+	// ComfyRunFlags The comfy run flags. E.g. `--low-vram`
+	ComfyRunFlags *string `json:"comfy_run_flags,omitempty"`
 
 	// CommitHash The hash of the commit
 	CommitHash *string `json:"commit_hash,omitempty"`
@@ -44,27 +85,41 @@ type ActionJobResult struct {
 	// CommitTime The Unix timestamp when the commit was made
 	CommitTime *int64 `json:"commit_time,omitempty"`
 
+	// CudaVersion CUDA version used
+	CudaVersion *string `json:"cuda_version,omitempty"`
+
 	// EndTime The end time of the job as a Unix timestamp.
 	EndTime *int64 `json:"end_time,omitempty"`
 
 	// GitRepo The repository name
 	GitRepo *string `json:"git_repo,omitempty"`
 
-	// GpuType GPU type used
-	GpuType *string `json:"gpu_type,omitempty"`
-
 	// Id Unique identifier for the job result
 	Id *openapi_types.UUID `json:"id,omitempty"`
 
+	// JobTriggerUser The user who triggered the job.
+	JobTriggerUser *string       `json:"job_trigger_user,omitempty"`
+	MachineStats   *MachineStats `json:"machine_stats,omitempty"`
+
 	// OperatingSystem Operating system used
 	OperatingSystem *string `json:"operating_system,omitempty"`
+
+	// PeakVram The peak VRAM used by the job
+	PeakVram *int `json:"peak_vram,omitempty"`
+
+	// PrNumber The pull request number
+	PrNumber *string `json:"pr_number,omitempty"`
+
+	// PythonVersion PyTorch version used
+	PythonVersion *string `json:"python_version,omitempty"`
 
 	// PytorchVersion PyTorch version used
 	PytorchVersion *string `json:"pytorch_version,omitempty"`
 
 	// StartTime The start time of the job as a Unix timestamp.
-	StartTime   *int64       `json:"start_time,omitempty"`
-	StorageFile *StorageFile `json:"storage_file,omitempty"`
+	StartTime   *int64             `json:"start_time,omitempty"`
+	Status      *WorkflowRunStatus `json:"status,omitempty"`
+	StorageFile *StorageFile       `json:"storage_file,omitempty"`
 
 	// WorkflowName Name of the workflow
 	WorkflowName *string `json:"workflow_name,omitempty"`
@@ -85,9 +140,48 @@ type ErrorResponse struct {
 	Message string `json:"message"`
 }
 
+// MachineStats defines model for MachineStats.
+type MachineStats struct {
+	// CpuCapacity Total CPU on the machine.
+	CpuCapacity *string `json:"cpu_capacity,omitempty"`
+
+	// DiskCapacity Total disk capacity on the machine.
+	DiskCapacity *string `json:"disk_capacity,omitempty"`
+
+	// GpuType The GPU type. eg. NVIDIA Tesla K80
+	GpuType *string `json:"gpu_type,omitempty"`
+
+	// InitialCpu Initial CPU available before the job starts.
+	InitialCpu *string `json:"initial_cpu,omitempty"`
+
+	// InitialDisk Initial disk available before the job starts.
+	InitialDisk *string `json:"initial_disk,omitempty"`
+
+	// InitialRam Initial RAM available before the job starts.
+	InitialRam *string `json:"initial_ram,omitempty"`
+
+	// MachineName Name of the machine.
+	MachineName *string `json:"machine_name,omitempty"`
+
+	// MemoryCapacity Total memory on the machine.
+	MemoryCapacity *string `json:"memory_capacity,omitempty"`
+
+	// OsVersion The operating system version. eg. Ubuntu Linux 20.04
+	OsVersion *string `json:"os_version,omitempty"`
+
+	// PipFreeze The pip freeze output
+	PipFreeze *string `json:"pip_freeze,omitempty"`
+
+	// VramTimeSeries Time series of VRAM usage.
+	VramTimeSeries *map[string]interface{} `json:"vram_time_series,omitempty"`
+}
+
 // Node defines model for Node.
 type Node struct {
-	Author      *string `json:"author,omitempty"`
+	Author *string `json:"author,omitempty"`
+
+	// Category The category of the node.
+	Category    *string `json:"category,omitempty"`
 	Description *string `json:"description,omitempty"`
 
 	// Downloads The number of downloads of the node.
@@ -111,9 +205,16 @@ type Node struct {
 	Rating *float32 `json:"rating,omitempty"`
 
 	// Repository URL to the node's repository.
-	Repository *string   `json:"repository,omitempty"`
-	Tags       *[]string `json:"tags,omitempty"`
+	Repository *string     `json:"repository,omitempty"`
+	Status     *NodeStatus `json:"status,omitempty"`
+
+	// StatusDetail The status detail of the node.
+	StatusDetail *string   `json:"status_detail,omitempty"`
+	Tags         *[]string `json:"tags,omitempty"`
 }
+
+// NodeStatus defines model for NodeStatus.
+type NodeStatus string
 
 // NodeVersion defines model for NodeVersion.
 type NodeVersion struct {
@@ -130,12 +231,19 @@ type NodeVersion struct {
 	Deprecated *bool `json:"deprecated,omitempty"`
 
 	// DownloadUrl [Output Only] URL to download this version of the node
-	DownloadUrl *string `json:"downloadUrl,omitempty"`
-	Id          *string `json:"id,omitempty"`
+	DownloadUrl *string            `json:"downloadUrl,omitempty"`
+	Id          *string            `json:"id,omitempty"`
+	Status      *NodeVersionStatus `json:"status,omitempty"`
+
+	// StatusReason The reason for the status change.
+	StatusReason *string `json:"status_reason,omitempty"`
 
 	// Version The version identifier, following semantic versioning. Must be unique for the node.
 	Version *string `json:"version,omitempty"`
 }
+
+// NodeVersionStatus defines model for NodeVersionStatus.
+type NodeVersionStatus string
 
 // NodeVersionUpdateRequest defines model for NodeVersionUpdateRequest.
 type NodeVersionUpdateRequest struct {
@@ -180,6 +288,7 @@ type Publisher struct {
 	Members        *[]PublisherMember `json:"members,omitempty"`
 	Name           *string            `json:"name,omitempty"`
 	SourceCodeRepo *string            `json:"source_code_repo,omitempty"`
+	Status         *PublisherStatus   `json:"status,omitempty"`
 	Support        *string            `json:"support,omitempty"`
 	Website        *string            `json:"website,omitempty"`
 }
@@ -193,6 +302,9 @@ type PublisherMember struct {
 	Role *string        `json:"role,omitempty"`
 	User *PublisherUser `json:"user,omitempty"`
 }
+
+// PublisherStatus defines model for PublisherStatus.
+type PublisherStatus string
 
 // PublisherUser defines model for PublisherUser.
 type PublisherUser struct {
@@ -236,6 +348,17 @@ type User struct {
 	Name *string `json:"name,omitempty"`
 }
 
+// WorkflowRunStatus defines model for WorkflowRunStatus.
+type WorkflowRunStatus string
+
+// AdminUpdateNodeVersionJSONBody defines parameters for AdminUpdateNodeVersion.
+type AdminUpdateNodeVersionJSONBody struct {
+	Status *NodeVersionStatus `json:"status,omitempty"`
+
+	// StatusReason The reason for the status change.
+	StatusReason *string `json:"status_reason,omitempty"`
+}
+
 // GetBranchParams defines parameters for GetBranch.
 type GetBranchParams struct {
 	// RepoName The repo to filter by.
@@ -273,6 +396,24 @@ type ListAllNodesParams struct {
 
 	// Limit Number of nodes to return per page
 	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// IncludeBanned Number of nodes to return per page
+	IncludeBanned *bool `form:"include_banned,omitempty" json:"include_banned,omitempty"`
+}
+
+// SearchNodesParams defines parameters for SearchNodes.
+type SearchNodesParams struct {
+	// Page Page number of the nodes list
+	Page *int `form:"page,omitempty" json:"page,omitempty"`
+
+	// Limit Number of nodes to return per page
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Search Keyword to search the nodes
+	Search *string `form:"search,omitempty" json:"search,omitempty"`
+
+	// IncludeBanned Number of nodes to return per page
+	IncludeBanned *bool `form:"include_banned,omitempty" json:"include_banned,omitempty"`
 }
 
 // InstallNodeParams defines parameters for InstallNode.
@@ -281,10 +422,27 @@ type InstallNodeParams struct {
 	Version *string `form:"version,omitempty" json:"version,omitempty"`
 }
 
+// PostNodeReviewParams defines parameters for PostNodeReview.
+type PostNodeReviewParams struct {
+	// Star number of star given to the node version
+	Star int `form:"star" json:"star"`
+}
+
+// ListNodeVersionsParams defines parameters for ListNodeVersions.
+type ListNodeVersionsParams struct {
+	Statuses *[]NodeVersionStatus `form:"statuses,omitempty" json:"statuses,omitempty"`
+}
+
 // ValidatePublisherParams defines parameters for ValidatePublisher.
 type ValidatePublisherParams struct {
 	// Username The publisher username to validate.
 	Username string `form:"username" json:"username"`
+}
+
+// ListNodesForPublisherParams defines parameters for ListNodesForPublisher.
+type ListNodesForPublisherParams struct {
+	// IncludeBanned Number of nodes to return per page
+	IncludeBanned *bool `form:"include_banned,omitempty" json:"include_banned,omitempty"`
 }
 
 // PublishNodeVersionJSONBody defines parameters for PublishNodeVersion.
@@ -294,8 +452,19 @@ type PublishNodeVersionJSONBody struct {
 	PersonalAccessToken string      `json:"personal_access_token"`
 }
 
+// SecurityScanParams defines parameters for SecurityScan.
+type SecurityScanParams struct {
+	MinAge   *time.Duration `form:"minAge,omitempty" json:"minAge,omitempty"`
+	MaxNodes *int           `form:"maxNodes,omitempty" json:"maxNodes,omitempty"`
+}
+
 // PostUploadArtifactJSONBody defines parameters for PostUploadArtifact.
 type PostUploadArtifactJSONBody struct {
+	// Author The author of the commit
+	Author string `json:"author"`
+
+	// AvgVram The average amount of VRAM used in the run.
+	AvgVram    *int   `json:"avg_vram,omitempty"`
 	BranchName string `json:"branch_name"`
 
 	// BucketName The name of the bucket where the output files are stored
@@ -303,7 +472,10 @@ type PostUploadArtifactJSONBody struct {
 
 	// ComfyLogsGcsPath The path to ComfyUI logs. eg. gs://bucket-name/logs
 	ComfyLogsGcsPath *string `json:"comfy_logs_gcs_path,omitempty"`
-	CommitHash       string  `json:"commit_hash"`
+
+	// ComfyRunFlags The flags used in the comfy run
+	ComfyRunFlags *string `json:"comfy_run_flags,omitempty"`
+	CommitHash    string  `json:"commit_hash"`
 
 	// CommitMessage The commit message
 	CommitMessage string `json:"commit_message"`
@@ -320,11 +492,27 @@ type PostUploadArtifactJSONBody struct {
 	// JobId Unique identifier for the job
 	JobId string `json:"job_id"`
 
+	// JobTriggerUser The user who triggered the job
+	JobTriggerUser string        `json:"job_trigger_user"`
+	MachineStats   *MachineStats `json:"machine_stats,omitempty"`
+
 	// Os Operating system used in the run
 	Os string `json:"os"`
 
 	// OutputFilesGcsPaths A comma separated string that contains GCS path(s) to output files. eg. gs://bucket-name/output, gs://bucket-name/output2
 	OutputFilesGcsPaths *string `json:"output_files_gcs_paths,omitempty"`
+
+	// PeakVram The peak amount of VRAM used in the run.
+	PeakVram *int `json:"peak_vram,omitempty"`
+
+	// PrNumber The pull request number
+	PrNumber string `json:"pr_number"`
+
+	// PythonVersion The python version used in the run
+	PythonVersion string `json:"python_version"`
+
+	// PytorchVersion The pytorch version used in the run
+	PytorchVersion *string `json:"pytorch_version,omitempty"`
 
 	// Repo Repository name
 	Repo string `json:"repo"`
@@ -333,11 +521,27 @@ type PostUploadArtifactJSONBody struct {
 	RunId string `json:"run_id"`
 
 	// StartTime The start time of the job as a Unix timestamp.
-	StartTime int64 `json:"start_time"`
+	StartTime int64             `json:"start_time"`
+	Status    WorkflowRunStatus `json:"status"`
 
 	// WorkflowName The name of the workflow
 	WorkflowName string `json:"workflow_name"`
 }
+
+// ListAllNodeVersionsParams defines parameters for ListAllNodeVersions.
+type ListAllNodeVersionsParams struct {
+	NodeId   *string              `form:"nodeId,omitempty" json:"nodeId,omitempty"`
+	Statuses *[]NodeVersionStatus `form:"statuses,omitempty" json:"statuses,omitempty"`
+
+	// Page The page number to retrieve.
+	Page *int `form:"page,omitempty" json:"page,omitempty"`
+
+	// PageSize The number of items to include per page.
+	PageSize *int `form:"pageSize,omitempty" json:"pageSize,omitempty"`
+}
+
+// AdminUpdateNodeVersionJSONRequestBody defines body for AdminUpdateNodeVersion for application/json ContentType.
+type AdminUpdateNodeVersionJSONRequestBody AdminUpdateNodeVersionJSONBody
 
 // CreatePublisherJSONRequestBody defines body for CreatePublisher for application/json ContentType.
 type CreatePublisherJSONRequestBody = Publisher
@@ -365,6 +569,9 @@ type PostUploadArtifactJSONRequestBody PostUploadArtifactJSONBody
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Admin Update Node Version Status
+	// (PUT /admin/nodes/{nodeId}/versions/{versionNumber})
+	AdminUpdateNodeVersion(ctx echo.Context, nodeId string, versionNumber string) error
 	// Retrieve all distinct branches for a given repo
 	// (GET /branch)
 	GetBranch(ctx echo.Context, params GetBranchParams) error
@@ -374,15 +581,24 @@ type ServerInterface interface {
 	// Retrieves a list of nodes
 	// (GET /nodes)
 	ListAllNodes(ctx echo.Context, params ListAllNodesParams) error
+	// Reindex all nodes for searching.
+	// (POST /nodes/reindex)
+	ReindexNodes(ctx echo.Context) error
+	// Retrieves a list of nodes
+	// (GET /nodes/search)
+	SearchNodes(ctx echo.Context, params SearchNodesParams) error
 	// Retrieve a specific node by ID
 	// (GET /nodes/{nodeId})
 	GetNode(ctx echo.Context, nodeId string) error
 	// Returns a node version to be installed.
 	// (GET /nodes/{nodeId}/install)
 	InstallNode(ctx echo.Context, nodeId string, params InstallNodeParams) error
+	// Add review to a specific version of a node
+	// (POST /nodes/{nodeId}/reviews)
+	PostNodeReview(ctx echo.Context, nodeId string, params PostNodeReviewParams) error
 	// List all versions of a node
 	// (GET /nodes/{nodeId}/versions)
-	ListNodeVersions(ctx echo.Context, nodeId string) error
+	ListNodeVersions(ctx echo.Context, nodeId string, params ListNodeVersionsParams) error
 	// Retrieve a specific version of a node
 	// (GET /nodes/{nodeId}/versions/{versionId})
 	GetNodeVersion(ctx echo.Context, nodeId string, versionId string) error
@@ -404,9 +620,12 @@ type ServerInterface interface {
 	// Update a publisher
 	// (PUT /publishers/{publisherId})
 	UpdatePublisher(ctx echo.Context, publisherId string) error
+	// Ban a publisher
+	// (POST /publishers/{publisherId}/ban)
+	BanPublisher(ctx echo.Context, publisherId string) error
 	// Retrieve all nodes
 	// (GET /publishers/{publisherId}/nodes)
-	ListNodesForPublisher(ctx echo.Context, publisherId string) error
+	ListNodesForPublisher(ctx echo.Context, publisherId string, params ListNodesForPublisherParams) error
 	// Create a new custom node
 	// (POST /publishers/{publisherId}/nodes)
 	CreateNode(ctx echo.Context, publisherId string) error
@@ -416,6 +635,9 @@ type ServerInterface interface {
 	// Update a specific node
 	// (PUT /publishers/{publisherId}/nodes/{nodeId})
 	UpdateNode(ctx echo.Context, publisherId string, nodeId string) error
+	// Ban a publisher's Node
+	// (POST /publishers/{publisherId}/nodes/{nodeId}/ban)
+	BanPublisherNode(ctx echo.Context, publisherId string, nodeId string) error
 	// Retrieve permissions the user has for a given publisher
 	// (GET /publishers/{publisherId}/nodes/{nodeId}/permissions)
 	GetPermissionOnPublisherNodes(ctx echo.Context, publisherId string, nodeId string) error
@@ -440,6 +662,9 @@ type ServerInterface interface {
 	// Delete a specific personal access token
 	// (DELETE /publishers/{publisherId}/tokens/{tokenId})
 	DeletePersonalAccessToken(ctx echo.Context, publisherId string, tokenId string) error
+	// Security Scan
+	// (GET /security-scan)
+	SecurityScan(ctx echo.Context, params SecurityScanParams) error
 	// Receive artifacts (output files) from the ComfyUI GitHub Action
 	// (POST /upload-artifact)
 	PostUploadArtifact(ctx echo.Context) error
@@ -449,11 +674,43 @@ type ServerInterface interface {
 	// Retrieve all publishers for a given user
 	// (GET /users/publishers/)
 	ListPublishersForUser(ctx echo.Context) error
+	// List all node versions given some filters.
+	// (GET /versions)
+	ListAllNodeVersions(ctx echo.Context, params ListAllNodeVersionsParams) error
+	// Retrieve a specific commit by ID
+	// (GET /workflowresult/{workflowResultId})
+	GetWorkflowResult(ctx echo.Context, workflowResultId string) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
+}
+
+// AdminUpdateNodeVersion converts echo context to params.
+func (w *ServerInterfaceWrapper) AdminUpdateNodeVersion(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "nodeId" -------------
+	var nodeId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "nodeId", ctx.Param("nodeId"), &nodeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter nodeId: %s", err))
+	}
+
+	// ------------- Path parameter "versionNumber" -------------
+	var versionNumber string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "versionNumber", ctx.Param("versionNumber"), &versionNumber, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter versionNumber: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.AdminUpdateNodeVersion(ctx, nodeId, versionNumber)
+	return err
 }
 
 // GetBranch converts echo context to params.
@@ -554,8 +811,63 @@ func (w *ServerInterfaceWrapper) ListAllNodes(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
 	}
 
+	// ------------- Optional query parameter "include_banned" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "include_banned", ctx.QueryParams(), &params.IncludeBanned)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter include_banned: %s", err))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.ListAllNodes(ctx, params)
+	return err
+}
+
+// ReindexNodes converts echo context to params.
+func (w *ServerInterfaceWrapper) ReindexNodes(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ReindexNodes(ctx)
+	return err
+}
+
+// SearchNodes converts echo context to params.
+func (w *ServerInterfaceWrapper) SearchNodes(ctx echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SearchNodesParams
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "page", ctx.QueryParams(), &params.Page)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter page: %s", err))
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", ctx.QueryParams(), &params.Limit)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
+	}
+
+	// ------------- Optional query parameter "search" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "search", ctx.QueryParams(), &params.Search)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter search: %s", err))
+	}
+
+	// ------------- Optional query parameter "include_banned" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "include_banned", ctx.QueryParams(), &params.IncludeBanned)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter include_banned: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SearchNodes(ctx, params)
 	return err
 }
 
@@ -600,6 +912,31 @@ func (w *ServerInterfaceWrapper) InstallNode(ctx echo.Context) error {
 	return err
 }
 
+// PostNodeReview converts echo context to params.
+func (w *ServerInterfaceWrapper) PostNodeReview(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "nodeId" -------------
+	var nodeId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "nodeId", ctx.Param("nodeId"), &nodeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter nodeId: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostNodeReviewParams
+	// ------------- Required query parameter "star" -------------
+
+	err = runtime.BindQueryParameter("form", true, true, "star", ctx.QueryParams(), &params.Star)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter star: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostNodeReview(ctx, nodeId, params)
+	return err
+}
+
 // ListNodeVersions converts echo context to params.
 func (w *ServerInterfaceWrapper) ListNodeVersions(ctx echo.Context) error {
 	var err error
@@ -611,8 +948,17 @@ func (w *ServerInterfaceWrapper) ListNodeVersions(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter nodeId: %s", err))
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListNodeVersionsParams
+	// ------------- Optional query parameter "statuses" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "statuses", ctx.QueryParams(), &params.Statuses)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter statuses: %s", err))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.ListNodeVersions(ctx, nodeId)
+	err = w.Handler.ListNodeVersions(ctx, nodeId, params)
 	return err
 }
 
@@ -730,6 +1076,22 @@ func (w *ServerInterfaceWrapper) UpdatePublisher(ctx echo.Context) error {
 	return err
 }
 
+// BanPublisher converts echo context to params.
+func (w *ServerInterfaceWrapper) BanPublisher(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "publisherId" -------------
+	var publisherId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "publisherId", ctx.Param("publisherId"), &publisherId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter publisherId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.BanPublisher(ctx, publisherId)
+	return err
+}
+
 // ListNodesForPublisher converts echo context to params.
 func (w *ServerInterfaceWrapper) ListNodesForPublisher(ctx echo.Context) error {
 	var err error
@@ -743,8 +1105,17 @@ func (w *ServerInterfaceWrapper) ListNodesForPublisher(ctx echo.Context) error {
 
 	ctx.Set(BearerAuthScopes, []string{})
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListNodesForPublisherParams
+	// ------------- Optional query parameter "include_banned" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "include_banned", ctx.QueryParams(), &params.IncludeBanned)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter include_banned: %s", err))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.ListNodesForPublisher(ctx, publisherId)
+	err = w.Handler.ListNodesForPublisher(ctx, publisherId, params)
 	return err
 }
 
@@ -815,6 +1186,30 @@ func (w *ServerInterfaceWrapper) UpdateNode(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.UpdateNode(ctx, publisherId, nodeId)
+	return err
+}
+
+// BanPublisherNode converts echo context to params.
+func (w *ServerInterfaceWrapper) BanPublisherNode(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "publisherId" -------------
+	var publisherId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "publisherId", ctx.Param("publisherId"), &publisherId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter publisherId: %s", err))
+	}
+
+	// ------------- Path parameter "nodeId" -------------
+	var nodeId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "nodeId", ctx.Param("nodeId"), &nodeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter nodeId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.BanPublisherNode(ctx, publisherId, nodeId)
 	return err
 }
 
@@ -1014,6 +1409,31 @@ func (w *ServerInterfaceWrapper) DeletePersonalAccessToken(ctx echo.Context) err
 	return err
 }
 
+// SecurityScan converts echo context to params.
+func (w *ServerInterfaceWrapper) SecurityScan(ctx echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SecurityScanParams
+	// ------------- Optional query parameter "minAge" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "minAge", ctx.QueryParams(), &params.MinAge)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter minAge: %s", err))
+	}
+
+	// ------------- Optional query parameter "maxNodes" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "maxNodes", ctx.QueryParams(), &params.MaxNodes)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter maxNodes: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecurityScan(ctx, params)
+	return err
+}
+
 // PostUploadArtifact converts echo context to params.
 func (w *ServerInterfaceWrapper) PostUploadArtifact(ctx echo.Context) error {
 	var err error
@@ -1040,6 +1460,61 @@ func (w *ServerInterfaceWrapper) ListPublishersForUser(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.ListPublishersForUser(ctx)
+	return err
+}
+
+// ListAllNodeVersions converts echo context to params.
+func (w *ServerInterfaceWrapper) ListAllNodeVersions(ctx echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListAllNodeVersionsParams
+	// ------------- Optional query parameter "nodeId" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "nodeId", ctx.QueryParams(), &params.NodeId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter nodeId: %s", err))
+	}
+
+	// ------------- Optional query parameter "statuses" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "statuses", ctx.QueryParams(), &params.Statuses)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter statuses: %s", err))
+	}
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "page", ctx.QueryParams(), &params.Page)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter page: %s", err))
+	}
+
+	// ------------- Optional query parameter "pageSize" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "pageSize", ctx.QueryParams(), &params.PageSize)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter pageSize: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ListAllNodeVersions(ctx, params)
+	return err
+}
+
+// GetWorkflowResult converts echo context to params.
+func (w *ServerInterfaceWrapper) GetWorkflowResult(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "workflowResultId" -------------
+	var workflowResultId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workflowResultId", ctx.Param("workflowResultId"), &workflowResultId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter workflowResultId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetWorkflowResult(ctx, workflowResultId)
 	return err
 }
 
@@ -1071,11 +1546,15 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
+	router.PUT(baseURL+"/admin/nodes/:nodeId/versions/:versionNumber", wrapper.AdminUpdateNodeVersion)
 	router.GET(baseURL+"/branch", wrapper.GetBranch)
 	router.GET(baseURL+"/gitcommit", wrapper.GetGitcommit)
 	router.GET(baseURL+"/nodes", wrapper.ListAllNodes)
+	router.POST(baseURL+"/nodes/reindex", wrapper.ReindexNodes)
+	router.GET(baseURL+"/nodes/search", wrapper.SearchNodes)
 	router.GET(baseURL+"/nodes/:nodeId", wrapper.GetNode)
 	router.GET(baseURL+"/nodes/:nodeId/install", wrapper.InstallNode)
+	router.POST(baseURL+"/nodes/:nodeId/reviews", wrapper.PostNodeReview)
 	router.GET(baseURL+"/nodes/:nodeId/versions", wrapper.ListNodeVersions)
 	router.GET(baseURL+"/nodes/:nodeId/versions/:versionId", wrapper.GetNodeVersion)
 	router.GET(baseURL+"/publishers", wrapper.ListPublishers)
@@ -1084,10 +1563,12 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.DELETE(baseURL+"/publishers/:publisherId", wrapper.DeletePublisher)
 	router.GET(baseURL+"/publishers/:publisherId", wrapper.GetPublisher)
 	router.PUT(baseURL+"/publishers/:publisherId", wrapper.UpdatePublisher)
+	router.POST(baseURL+"/publishers/:publisherId/ban", wrapper.BanPublisher)
 	router.GET(baseURL+"/publishers/:publisherId/nodes", wrapper.ListNodesForPublisher)
 	router.POST(baseURL+"/publishers/:publisherId/nodes", wrapper.CreateNode)
 	router.DELETE(baseURL+"/publishers/:publisherId/nodes/:nodeId", wrapper.DeleteNode)
 	router.PUT(baseURL+"/publishers/:publisherId/nodes/:nodeId", wrapper.UpdateNode)
+	router.POST(baseURL+"/publishers/:publisherId/nodes/:nodeId/ban", wrapper.BanPublisherNode)
 	router.GET(baseURL+"/publishers/:publisherId/nodes/:nodeId/permissions", wrapper.GetPermissionOnPublisherNodes)
 	router.POST(baseURL+"/publishers/:publisherId/nodes/:nodeId/versions", wrapper.PublishNodeVersion)
 	router.DELETE(baseURL+"/publishers/:publisherId/nodes/:nodeId/versions/:versionId", wrapper.DeleteNodeVersion)
@@ -1096,10 +1577,76 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/publishers/:publisherId/tokens", wrapper.ListPersonalAccessTokens)
 	router.POST(baseURL+"/publishers/:publisherId/tokens", wrapper.CreatePersonalAccessToken)
 	router.DELETE(baseURL+"/publishers/:publisherId/tokens/:tokenId", wrapper.DeletePersonalAccessToken)
+	router.GET(baseURL+"/security-scan", wrapper.SecurityScan)
 	router.POST(baseURL+"/upload-artifact", wrapper.PostUploadArtifact)
 	router.GET(baseURL+"/users", wrapper.GetUser)
 	router.GET(baseURL+"/users/publishers/", wrapper.ListPublishersForUser)
+	router.GET(baseURL+"/versions", wrapper.ListAllNodeVersions)
+	router.GET(baseURL+"/workflowresult/:workflowResultId", wrapper.GetWorkflowResult)
 
+}
+
+type AdminUpdateNodeVersionRequestObject struct {
+	NodeId        string `json:"nodeId"`
+	VersionNumber string `json:"versionNumber"`
+	Body          *AdminUpdateNodeVersionJSONRequestBody
+}
+
+type AdminUpdateNodeVersionResponseObject interface {
+	VisitAdminUpdateNodeVersionResponse(w http.ResponseWriter) error
+}
+
+type AdminUpdateNodeVersion200JSONResponse NodeVersion
+
+func (response AdminUpdateNodeVersion200JSONResponse) VisitAdminUpdateNodeVersionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AdminUpdateNodeVersion400JSONResponse ErrorResponse
+
+func (response AdminUpdateNodeVersion400JSONResponse) VisitAdminUpdateNodeVersionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AdminUpdateNodeVersion401Response struct {
+}
+
+func (response AdminUpdateNodeVersion401Response) VisitAdminUpdateNodeVersionResponse(w http.ResponseWriter) error {
+	w.WriteHeader(401)
+	return nil
+}
+
+type AdminUpdateNodeVersion403JSONResponse ErrorResponse
+
+func (response AdminUpdateNodeVersion403JSONResponse) VisitAdminUpdateNodeVersionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AdminUpdateNodeVersion404JSONResponse ErrorResponse
+
+func (response AdminUpdateNodeVersion404JSONResponse) VisitAdminUpdateNodeVersionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AdminUpdateNodeVersion500JSONResponse ErrorResponse
+
+func (response AdminUpdateNodeVersion500JSONResponse) VisitAdminUpdateNodeVersionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
 }
 
 type GetBranchRequestObject struct {
@@ -1228,6 +1775,94 @@ func (response ListAllNodes500JSONResponse) VisitListAllNodesResponse(w http.Res
 	return json.NewEncoder(w).Encode(response)
 }
 
+type ReindexNodesRequestObject struct {
+}
+
+type ReindexNodesResponseObject interface {
+	VisitReindexNodesResponse(w http.ResponseWriter) error
+}
+
+type ReindexNodes200Response struct {
+}
+
+func (response ReindexNodes200Response) VisitReindexNodesResponse(w http.ResponseWriter) error {
+	w.WriteHeader(200)
+	return nil
+}
+
+type ReindexNodes400JSONResponse ErrorResponse
+
+func (response ReindexNodes400JSONResponse) VisitReindexNodesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ReindexNodes500JSONResponse ErrorResponse
+
+func (response ReindexNodes500JSONResponse) VisitReindexNodesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SearchNodesRequestObject struct {
+	Params SearchNodesParams
+}
+
+type SearchNodesResponseObject interface {
+	VisitSearchNodesResponse(w http.ResponseWriter) error
+}
+
+type SearchNodes200JSONResponse struct {
+	// Limit Maximum number of nodes per page
+	Limit *int    `json:"limit,omitempty"`
+	Nodes *[]Node `json:"nodes,omitempty"`
+
+	// Page Current page number
+	Page *int `json:"page,omitempty"`
+
+	// Total Total number of nodes available
+	Total *int `json:"total,omitempty"`
+
+	// TotalPages Total number of pages available
+	TotalPages *int `json:"totalPages,omitempty"`
+}
+
+func (response SearchNodes200JSONResponse) VisitSearchNodesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SearchNodes400Response struct {
+}
+
+func (response SearchNodes400Response) VisitSearchNodesResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
+}
+
+type SearchNodes404Response struct {
+}
+
+func (response SearchNodes404Response) VisitSearchNodesResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
+type SearchNodes500JSONResponse ErrorResponse
+
+func (response SearchNodes500JSONResponse) VisitSearchNodesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type GetNodeRequestObject struct {
 	NodeId string `json:"nodeId"`
 }
@@ -1326,8 +1961,53 @@ func (response InstallNode500JSONResponse) VisitInstallNodeResponse(w http.Respo
 	return json.NewEncoder(w).Encode(response)
 }
 
+type PostNodeReviewRequestObject struct {
+	NodeId string `json:"nodeId"`
+	Params PostNodeReviewParams
+}
+
+type PostNodeReviewResponseObject interface {
+	VisitPostNodeReviewResponse(w http.ResponseWriter) error
+}
+
+type PostNodeReview200JSONResponse Node
+
+func (response PostNodeReview200JSONResponse) VisitPostNodeReviewResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostNodeReview400Response struct {
+}
+
+func (response PostNodeReview400Response) VisitPostNodeReviewResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
+}
+
+type PostNodeReview404JSONResponse Error
+
+func (response PostNodeReview404JSONResponse) VisitPostNodeReviewResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostNodeReview500JSONResponse ErrorResponse
+
+func (response PostNodeReview500JSONResponse) VisitPostNodeReviewResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type ListNodeVersionsRequestObject struct {
 	NodeId string `json:"nodeId"`
+	Params ListNodeVersionsParams
 }
 
 type ListNodeVersionsResponseObject interface {
@@ -1339,6 +2019,15 @@ type ListNodeVersions200JSONResponse []NodeVersion
 func (response ListNodeVersions200JSONResponse) VisitListNodeVersionsResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListNodeVersions403JSONResponse ErrorResponse
+
+func (response ListNodeVersions403JSONResponse) VisitListNodeVersionsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -1643,8 +2332,60 @@ func (response UpdatePublisher500JSONResponse) VisitUpdatePublisherResponse(w ht
 	return json.NewEncoder(w).Encode(response)
 }
 
+type BanPublisherRequestObject struct {
+	PublisherId string `json:"publisherId"`
+}
+
+type BanPublisherResponseObject interface {
+	VisitBanPublisherResponse(w http.ResponseWriter) error
+}
+
+type BanPublisher204Response struct {
+}
+
+func (response BanPublisher204Response) VisitBanPublisherResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type BanPublisher401Response struct {
+}
+
+func (response BanPublisher401Response) VisitBanPublisherResponse(w http.ResponseWriter) error {
+	w.WriteHeader(401)
+	return nil
+}
+
+type BanPublisher403JSONResponse ErrorResponse
+
+func (response BanPublisher403JSONResponse) VisitBanPublisherResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type BanPublisher404JSONResponse ErrorResponse
+
+func (response BanPublisher404JSONResponse) VisitBanPublisherResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type BanPublisher500JSONResponse ErrorResponse
+
+func (response BanPublisher500JSONResponse) VisitBanPublisherResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type ListNodesForPublisherRequestObject struct {
 	PublisherId string `json:"publisherId"`
+	Params      ListNodesForPublisherParams
 }
 
 type ListNodesForPublisherResponseObject interface {
@@ -1829,6 +2570,58 @@ func (response UpdateNode500JSONResponse) VisitUpdateNodeResponse(w http.Respons
 	return json.NewEncoder(w).Encode(response)
 }
 
+type BanPublisherNodeRequestObject struct {
+	PublisherId string `json:"publisherId"`
+	NodeId      string `json:"nodeId"`
+}
+
+type BanPublisherNodeResponseObject interface {
+	VisitBanPublisherNodeResponse(w http.ResponseWriter) error
+}
+
+type BanPublisherNode204Response struct {
+}
+
+func (response BanPublisherNode204Response) VisitBanPublisherNodeResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type BanPublisherNode401Response struct {
+}
+
+func (response BanPublisherNode401Response) VisitBanPublisherNodeResponse(w http.ResponseWriter) error {
+	w.WriteHeader(401)
+	return nil
+}
+
+type BanPublisherNode403JSONResponse ErrorResponse
+
+func (response BanPublisherNode403JSONResponse) VisitBanPublisherNodeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type BanPublisherNode404JSONResponse ErrorResponse
+
+func (response BanPublisherNode404JSONResponse) VisitBanPublisherNodeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type BanPublisherNode500JSONResponse ErrorResponse
+
+func (response BanPublisherNode500JSONResponse) VisitBanPublisherNodeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type GetPermissionOnPublisherNodesRequestObject struct {
 	PublisherId string `json:"publisherId"`
 	NodeId      string `json:"nodeId"`
@@ -1936,11 +2729,29 @@ func (response DeleteNodeVersion204Response) VisitDeleteNodeVersionResponse(w ht
 	return nil
 }
 
+type DeleteNodeVersion403JSONResponse ErrorResponse
+
+func (response DeleteNodeVersion403JSONResponse) VisitDeleteNodeVersionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type DeleteNodeVersion404JSONResponse Error
 
 func (response DeleteNodeVersion404JSONResponse) VisitDeleteNodeVersionResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteNodeVersion500JSONResponse ErrorResponse
+
+func (response DeleteNodeVersion500JSONResponse) VisitDeleteNodeVersionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -2182,6 +2993,57 @@ func (response DeletePersonalAccessToken500JSONResponse) VisitDeletePersonalAcce
 	return json.NewEncoder(w).Encode(response)
 }
 
+type SecurityScanRequestObject struct {
+	Params SecurityScanParams
+}
+
+type SecurityScanResponseObject interface {
+	VisitSecurityScanResponse(w http.ResponseWriter) error
+}
+
+type SecurityScan200Response struct {
+}
+
+func (response SecurityScan200Response) VisitSecurityScanResponse(w http.ResponseWriter) error {
+	w.WriteHeader(200)
+	return nil
+}
+
+type SecurityScan400JSONResponse ErrorResponse
+
+func (response SecurityScan400JSONResponse) VisitSecurityScanResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SecurityScan401Response struct {
+}
+
+func (response SecurityScan401Response) VisitSecurityScanResponse(w http.ResponseWriter) error {
+	w.WriteHeader(401)
+	return nil
+}
+
+type SecurityScan403JSONResponse ErrorResponse
+
+func (response SecurityScan403JSONResponse) VisitSecurityScanResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SecurityScan500JSONResponse ErrorResponse
+
+func (response SecurityScan500JSONResponse) VisitSecurityScanResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type PostUploadArtifactRequestObject struct {
 	Body *PostUploadArtifactJSONRequestBody
 }
@@ -2283,8 +3145,94 @@ func (response ListPublishersForUser500JSONResponse) VisitListPublishersForUserR
 	return json.NewEncoder(w).Encode(response)
 }
 
+type ListAllNodeVersionsRequestObject struct {
+	Params ListAllNodeVersionsParams
+}
+
+type ListAllNodeVersionsResponseObject interface {
+	VisitListAllNodeVersionsResponse(w http.ResponseWriter) error
+}
+
+type ListAllNodeVersions200JSONResponse struct {
+	// Page Current page number
+	Page *int `json:"page,omitempty"`
+
+	// PageSize Maximum number of node versions per page. Maximum is 100.
+	PageSize *int `json:"pageSize,omitempty"`
+
+	// Total Total number of node versions available
+	Total *int `json:"total,omitempty"`
+
+	// TotalPages Total number of pages available
+	TotalPages *int           `json:"totalPages,omitempty"`
+	Versions   *[]NodeVersion `json:"versions,omitempty"`
+}
+
+func (response ListAllNodeVersions200JSONResponse) VisitListAllNodeVersionsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListAllNodeVersions403JSONResponse ErrorResponse
+
+func (response ListAllNodeVersions403JSONResponse) VisitListAllNodeVersionsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListAllNodeVersions500JSONResponse ErrorResponse
+
+func (response ListAllNodeVersions500JSONResponse) VisitListAllNodeVersionsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetWorkflowResultRequestObject struct {
+	WorkflowResultId string `json:"workflowResultId"`
+}
+
+type GetWorkflowResultResponseObject interface {
+	VisitGetWorkflowResultResponse(w http.ResponseWriter) error
+}
+
+type GetWorkflowResult200JSONResponse ActionJobResult
+
+func (response GetWorkflowResult200JSONResponse) VisitGetWorkflowResultResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetWorkflowResult404JSONResponse ErrorResponse
+
+func (response GetWorkflowResult404JSONResponse) VisitGetWorkflowResultResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetWorkflowResult500JSONResponse ErrorResponse
+
+func (response GetWorkflowResult500JSONResponse) VisitGetWorkflowResultResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// Admin Update Node Version Status
+	// (PUT /admin/nodes/{nodeId}/versions/{versionNumber})
+	AdminUpdateNodeVersion(ctx context.Context, request AdminUpdateNodeVersionRequestObject) (AdminUpdateNodeVersionResponseObject, error)
 	// Retrieve all distinct branches for a given repo
 	// (GET /branch)
 	GetBranch(ctx context.Context, request GetBranchRequestObject) (GetBranchResponseObject, error)
@@ -2294,12 +3242,21 @@ type StrictServerInterface interface {
 	// Retrieves a list of nodes
 	// (GET /nodes)
 	ListAllNodes(ctx context.Context, request ListAllNodesRequestObject) (ListAllNodesResponseObject, error)
+	// Reindex all nodes for searching.
+	// (POST /nodes/reindex)
+	ReindexNodes(ctx context.Context, request ReindexNodesRequestObject) (ReindexNodesResponseObject, error)
+	// Retrieves a list of nodes
+	// (GET /nodes/search)
+	SearchNodes(ctx context.Context, request SearchNodesRequestObject) (SearchNodesResponseObject, error)
 	// Retrieve a specific node by ID
 	// (GET /nodes/{nodeId})
 	GetNode(ctx context.Context, request GetNodeRequestObject) (GetNodeResponseObject, error)
 	// Returns a node version to be installed.
 	// (GET /nodes/{nodeId}/install)
 	InstallNode(ctx context.Context, request InstallNodeRequestObject) (InstallNodeResponseObject, error)
+	// Add review to a specific version of a node
+	// (POST /nodes/{nodeId}/reviews)
+	PostNodeReview(ctx context.Context, request PostNodeReviewRequestObject) (PostNodeReviewResponseObject, error)
 	// List all versions of a node
 	// (GET /nodes/{nodeId}/versions)
 	ListNodeVersions(ctx context.Context, request ListNodeVersionsRequestObject) (ListNodeVersionsResponseObject, error)
@@ -2324,6 +3281,9 @@ type StrictServerInterface interface {
 	// Update a publisher
 	// (PUT /publishers/{publisherId})
 	UpdatePublisher(ctx context.Context, request UpdatePublisherRequestObject) (UpdatePublisherResponseObject, error)
+	// Ban a publisher
+	// (POST /publishers/{publisherId}/ban)
+	BanPublisher(ctx context.Context, request BanPublisherRequestObject) (BanPublisherResponseObject, error)
 	// Retrieve all nodes
 	// (GET /publishers/{publisherId}/nodes)
 	ListNodesForPublisher(ctx context.Context, request ListNodesForPublisherRequestObject) (ListNodesForPublisherResponseObject, error)
@@ -2336,6 +3296,9 @@ type StrictServerInterface interface {
 	// Update a specific node
 	// (PUT /publishers/{publisherId}/nodes/{nodeId})
 	UpdateNode(ctx context.Context, request UpdateNodeRequestObject) (UpdateNodeResponseObject, error)
+	// Ban a publisher's Node
+	// (POST /publishers/{publisherId}/nodes/{nodeId}/ban)
+	BanPublisherNode(ctx context.Context, request BanPublisherNodeRequestObject) (BanPublisherNodeResponseObject, error)
 	// Retrieve permissions the user has for a given publisher
 	// (GET /publishers/{publisherId}/nodes/{nodeId}/permissions)
 	GetPermissionOnPublisherNodes(ctx context.Context, request GetPermissionOnPublisherNodesRequestObject) (GetPermissionOnPublisherNodesResponseObject, error)
@@ -2360,6 +3323,9 @@ type StrictServerInterface interface {
 	// Delete a specific personal access token
 	// (DELETE /publishers/{publisherId}/tokens/{tokenId})
 	DeletePersonalAccessToken(ctx context.Context, request DeletePersonalAccessTokenRequestObject) (DeletePersonalAccessTokenResponseObject, error)
+	// Security Scan
+	// (GET /security-scan)
+	SecurityScan(ctx context.Context, request SecurityScanRequestObject) (SecurityScanResponseObject, error)
 	// Receive artifacts (output files) from the ComfyUI GitHub Action
 	// (POST /upload-artifact)
 	PostUploadArtifact(ctx context.Context, request PostUploadArtifactRequestObject) (PostUploadArtifactResponseObject, error)
@@ -2369,6 +3335,12 @@ type StrictServerInterface interface {
 	// Retrieve all publishers for a given user
 	// (GET /users/publishers/)
 	ListPublishersForUser(ctx context.Context, request ListPublishersForUserRequestObject) (ListPublishersForUserResponseObject, error)
+	// List all node versions given some filters.
+	// (GET /versions)
+	ListAllNodeVersions(ctx context.Context, request ListAllNodeVersionsRequestObject) (ListAllNodeVersionsResponseObject, error)
+	// Retrieve a specific commit by ID
+	// (GET /workflowresult/{workflowResultId})
+	GetWorkflowResult(ctx context.Context, request GetWorkflowResultRequestObject) (GetWorkflowResultResponseObject, error)
 }
 
 type StrictHandlerFunc = strictecho.StrictEchoHandlerFunc
@@ -2381,6 +3353,38 @@ func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareF
 type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
+}
+
+// AdminUpdateNodeVersion operation middleware
+func (sh *strictHandler) AdminUpdateNodeVersion(ctx echo.Context, nodeId string, versionNumber string) error {
+	var request AdminUpdateNodeVersionRequestObject
+
+	request.NodeId = nodeId
+	request.VersionNumber = versionNumber
+
+	var body AdminUpdateNodeVersionJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.AdminUpdateNodeVersion(ctx.Request().Context(), request.(AdminUpdateNodeVersionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AdminUpdateNodeVersion")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(AdminUpdateNodeVersionResponseObject); ok {
+		return validResponse.VisitAdminUpdateNodeVersionResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
 }
 
 // GetBranch operation middleware
@@ -2458,6 +3462,54 @@ func (sh *strictHandler) ListAllNodes(ctx echo.Context, params ListAllNodesParam
 	return nil
 }
 
+// ReindexNodes operation middleware
+func (sh *strictHandler) ReindexNodes(ctx echo.Context) error {
+	var request ReindexNodesRequestObject
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.ReindexNodes(ctx.Request().Context(), request.(ReindexNodesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ReindexNodes")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(ReindexNodesResponseObject); ok {
+		return validResponse.VisitReindexNodesResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// SearchNodes operation middleware
+func (sh *strictHandler) SearchNodes(ctx echo.Context, params SearchNodesParams) error {
+	var request SearchNodesRequestObject
+
+	request.Params = params
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.SearchNodes(ctx.Request().Context(), request.(SearchNodesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SearchNodes")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(SearchNodesResponseObject); ok {
+		return validResponse.VisitSearchNodesResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
 // GetNode operation middleware
 func (sh *strictHandler) GetNode(ctx echo.Context, nodeId string) error {
 	var request GetNodeRequestObject
@@ -2509,11 +3561,38 @@ func (sh *strictHandler) InstallNode(ctx echo.Context, nodeId string, params Ins
 	return nil
 }
 
+// PostNodeReview operation middleware
+func (sh *strictHandler) PostNodeReview(ctx echo.Context, nodeId string, params PostNodeReviewParams) error {
+	var request PostNodeReviewRequestObject
+
+	request.NodeId = nodeId
+	request.Params = params
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.PostNodeReview(ctx.Request().Context(), request.(PostNodeReviewRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PostNodeReview")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(PostNodeReviewResponseObject); ok {
+		return validResponse.VisitPostNodeReviewResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
 // ListNodeVersions operation middleware
-func (sh *strictHandler) ListNodeVersions(ctx echo.Context, nodeId string) error {
+func (sh *strictHandler) ListNodeVersions(ctx echo.Context, nodeId string, params ListNodeVersionsParams) error {
 	var request ListNodeVersionsRequestObject
 
 	request.NodeId = nodeId
+	request.Params = params
 
 	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.ListNodeVersions(ctx.Request().Context(), request.(ListNodeVersionsRequestObject))
@@ -2718,11 +3797,37 @@ func (sh *strictHandler) UpdatePublisher(ctx echo.Context, publisherId string) e
 	return nil
 }
 
+// BanPublisher operation middleware
+func (sh *strictHandler) BanPublisher(ctx echo.Context, publisherId string) error {
+	var request BanPublisherRequestObject
+
+	request.PublisherId = publisherId
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.BanPublisher(ctx.Request().Context(), request.(BanPublisherRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "BanPublisher")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(BanPublisherResponseObject); ok {
+		return validResponse.VisitBanPublisherResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
 // ListNodesForPublisher operation middleware
-func (sh *strictHandler) ListNodesForPublisher(ctx echo.Context, publisherId string) error {
+func (sh *strictHandler) ListNodesForPublisher(ctx echo.Context, publisherId string, params ListNodesForPublisherParams) error {
 	var request ListNodesForPublisherRequestObject
 
 	request.PublisherId = publisherId
+	request.Params = params
 
 	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.ListNodesForPublisher(ctx.Request().Context(), request.(ListNodesForPublisherRequestObject))
@@ -2826,6 +3931,32 @@ func (sh *strictHandler) UpdateNode(ctx echo.Context, publisherId string, nodeId
 		return err
 	} else if validResponse, ok := response.(UpdateNodeResponseObject); ok {
 		return validResponse.VisitUpdateNodeResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// BanPublisherNode operation middleware
+func (sh *strictHandler) BanPublisherNode(ctx echo.Context, publisherId string, nodeId string) error {
+	var request BanPublisherNodeRequestObject
+
+	request.PublisherId = publisherId
+	request.NodeId = nodeId
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.BanPublisherNode(ctx.Request().Context(), request.(BanPublisherNodeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "BanPublisherNode")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(BanPublisherNodeResponseObject); ok {
+		return validResponse.VisitBanPublisherNodeResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}
@@ -3057,6 +4188,31 @@ func (sh *strictHandler) DeletePersonalAccessToken(ctx echo.Context, publisherId
 	return nil
 }
 
+// SecurityScan operation middleware
+func (sh *strictHandler) SecurityScan(ctx echo.Context, params SecurityScanParams) error {
+	var request SecurityScanRequestObject
+
+	request.Params = params
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.SecurityScan(ctx.Request().Context(), request.(SecurityScanRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SecurityScan")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(SecurityScanResponseObject); ok {
+		return validResponse.VisitSecurityScanResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
 // PostUploadArtifact operation middleware
 func (sh *strictHandler) PostUploadArtifact(ctx echo.Context) error {
 	var request PostUploadArtifactRequestObject
@@ -3132,77 +4288,151 @@ func (sh *strictHandler) ListPublishersForUser(ctx echo.Context) error {
 	return nil
 }
 
+// ListAllNodeVersions operation middleware
+func (sh *strictHandler) ListAllNodeVersions(ctx echo.Context, params ListAllNodeVersionsParams) error {
+	var request ListAllNodeVersionsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.ListAllNodeVersions(ctx.Request().Context(), request.(ListAllNodeVersionsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListAllNodeVersions")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(ListAllNodeVersionsResponseObject); ok {
+		return validResponse.VisitListAllNodeVersionsResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// GetWorkflowResult operation middleware
+func (sh *strictHandler) GetWorkflowResult(ctx echo.Context, workflowResultId string) error {
+	var request GetWorkflowResultRequestObject
+
+	request.WorkflowResultId = workflowResultId
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetWorkflowResult(ctx.Request().Context(), request.(GetWorkflowResultRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetWorkflowResult")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(GetWorkflowResultResponseObject); ok {
+		return validResponse.VisitGetWorkflowResultResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"/wMAAP//lLylj0N5AAA=",
+	"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",
+	"//8uUHTnXaoAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

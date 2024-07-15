@@ -23,6 +23,7 @@ type StorageFileQuery struct {
 	order      []storagefile.OrderOption
 	inters     []Interceptor
 	predicates []predicate.StorageFile
+	withFKs    bool
 	modifiers  []func(*sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
@@ -334,9 +335,13 @@ func (sfq *StorageFileQuery) prepareQuery(ctx context.Context) error {
 
 func (sfq *StorageFileQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*StorageFile, error) {
 	var (
-		nodes = []*StorageFile{}
-		_spec = sfq.querySpec()
+		nodes   = []*StorageFile{}
+		withFKs = sfq.withFKs
+		_spec   = sfq.querySpec()
 	)
+	if withFKs {
+		_spec.Node.Columns = append(_spec.Node.Columns, storagefile.ForeignKeys...)
+	}
 	_spec.ScanValues = func(columns []string) ([]any, error) {
 		return (*StorageFile).scanValues(nil, columns)
 	}
@@ -473,6 +478,12 @@ func (sfq *StorageFileQuery) ForShare(opts ...sql.LockOption) *StorageFileQuery 
 	return sfq
 }
 
+// Modify adds a query modifier for attaching custom logic to queries.
+func (sfq *StorageFileQuery) Modify(modifiers ...func(s *sql.Selector)) *StorageFileSelect {
+	sfq.modifiers = append(sfq.modifiers, modifiers...)
+	return sfq.Select()
+}
+
 // StorageFileGroupBy is the group-by builder for StorageFile entities.
 type StorageFileGroupBy struct {
 	selector
@@ -561,4 +572,10 @@ func (sfs *StorageFileSelect) sqlScan(ctx context.Context, root *StorageFileQuer
 	}
 	defer rows.Close()
 	return sql.ScanSlice(rows, v)
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (sfs *StorageFileSelect) Modify(modifiers ...func(s *sql.Selector)) *StorageFileSelect {
+	sfs.modifiers = append(sfs.modifiers, modifiers...)
+	return sfs
 }

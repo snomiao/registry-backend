@@ -9,6 +9,7 @@ import (
 	"registry-backend/ent/node"
 	"registry-backend/ent/nodeversion"
 	"registry-backend/ent/predicate"
+	"registry-backend/ent/schema"
 	"registry-backend/ent/storagefile"
 	"time"
 
@@ -22,8 +23,9 @@ import (
 // NodeVersionUpdate is the builder for updating NodeVersion entities.
 type NodeVersionUpdate struct {
 	config
-	hooks    []Hook
-	mutation *NodeVersionMutation
+	hooks     []Hook
+	mutation  *NodeVersionMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // Where appends a list predicates to the NodeVersionUpdate builder.
@@ -112,6 +114,34 @@ func (nvu *NodeVersionUpdate) SetNillableDeprecated(b *bool) *NodeVersionUpdate 
 	return nvu
 }
 
+// SetStatus sets the "status" field.
+func (nvu *NodeVersionUpdate) SetStatus(svs schema.NodeVersionStatus) *NodeVersionUpdate {
+	nvu.mutation.SetStatus(svs)
+	return nvu
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (nvu *NodeVersionUpdate) SetNillableStatus(svs *schema.NodeVersionStatus) *NodeVersionUpdate {
+	if svs != nil {
+		nvu.SetStatus(*svs)
+	}
+	return nvu
+}
+
+// SetStatusReason sets the "status_reason" field.
+func (nvu *NodeVersionUpdate) SetStatusReason(s string) *NodeVersionUpdate {
+	nvu.mutation.SetStatusReason(s)
+	return nvu
+}
+
+// SetNillableStatusReason sets the "status_reason" field if the given value is not nil.
+func (nvu *NodeVersionUpdate) SetNillableStatusReason(s *string) *NodeVersionUpdate {
+	if s != nil {
+		nvu.SetStatusReason(*s)
+	}
+	return nvu
+}
+
 // SetNode sets the "node" edge to the Node entity.
 func (nvu *NodeVersionUpdate) SetNode(n *Node) *NodeVersionUpdate {
 	return nvu.SetNodeID(n.ID)
@@ -191,10 +221,21 @@ func (nvu *NodeVersionUpdate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (nvu *NodeVersionUpdate) check() error {
+	if v, ok := nvu.mutation.Status(); ok {
+		if err := nodeversion.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "NodeVersion.status": %w`, err)}
+		}
+	}
 	if _, ok := nvu.mutation.NodeID(); nvu.mutation.NodeCleared() && !ok {
 		return errors.New(`ent: clearing a required unique edge "NodeVersion.node"`)
 	}
 	return nil
+}
+
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (nvu *NodeVersionUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *NodeVersionUpdate {
+	nvu.modifiers = append(nvu.modifiers, modifiers...)
+	return nvu
 }
 
 func (nvu *NodeVersionUpdate) sqlSave(ctx context.Context) (n int, err error) {
@@ -231,6 +272,12 @@ func (nvu *NodeVersionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if value, ok := nvu.mutation.Deprecated(); ok {
 		_spec.SetField(nodeversion.FieldDeprecated, field.TypeBool, value)
+	}
+	if value, ok := nvu.mutation.Status(); ok {
+		_spec.SetField(nodeversion.FieldStatus, field.TypeEnum, value)
+	}
+	if value, ok := nvu.mutation.StatusReason(); ok {
+		_spec.SetField(nodeversion.FieldStatusReason, field.TypeString, value)
 	}
 	if nvu.mutation.NodeCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -290,6 +337,7 @@ func (nvu *NodeVersionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.AddModifiers(nvu.modifiers...)
 	if n, err = sqlgraph.UpdateNodes(ctx, nvu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{nodeversion.Label}
@@ -305,9 +353,10 @@ func (nvu *NodeVersionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 // NodeVersionUpdateOne is the builder for updating a single NodeVersion entity.
 type NodeVersionUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *NodeVersionMutation
+	fields    []string
+	hooks     []Hook
+	mutation  *NodeVersionMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // SetUpdateTime sets the "update_time" field.
@@ -386,6 +435,34 @@ func (nvuo *NodeVersionUpdateOne) SetDeprecated(b bool) *NodeVersionUpdateOne {
 func (nvuo *NodeVersionUpdateOne) SetNillableDeprecated(b *bool) *NodeVersionUpdateOne {
 	if b != nil {
 		nvuo.SetDeprecated(*b)
+	}
+	return nvuo
+}
+
+// SetStatus sets the "status" field.
+func (nvuo *NodeVersionUpdateOne) SetStatus(svs schema.NodeVersionStatus) *NodeVersionUpdateOne {
+	nvuo.mutation.SetStatus(svs)
+	return nvuo
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (nvuo *NodeVersionUpdateOne) SetNillableStatus(svs *schema.NodeVersionStatus) *NodeVersionUpdateOne {
+	if svs != nil {
+		nvuo.SetStatus(*svs)
+	}
+	return nvuo
+}
+
+// SetStatusReason sets the "status_reason" field.
+func (nvuo *NodeVersionUpdateOne) SetStatusReason(s string) *NodeVersionUpdateOne {
+	nvuo.mutation.SetStatusReason(s)
+	return nvuo
+}
+
+// SetNillableStatusReason sets the "status_reason" field if the given value is not nil.
+func (nvuo *NodeVersionUpdateOne) SetNillableStatusReason(s *string) *NodeVersionUpdateOne {
+	if s != nil {
+		nvuo.SetStatusReason(*s)
 	}
 	return nvuo
 }
@@ -482,10 +559,21 @@ func (nvuo *NodeVersionUpdateOne) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (nvuo *NodeVersionUpdateOne) check() error {
+	if v, ok := nvuo.mutation.Status(); ok {
+		if err := nodeversion.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "NodeVersion.status": %w`, err)}
+		}
+	}
 	if _, ok := nvuo.mutation.NodeID(); nvuo.mutation.NodeCleared() && !ok {
 		return errors.New(`ent: clearing a required unique edge "NodeVersion.node"`)
 	}
 	return nil
+}
+
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (nvuo *NodeVersionUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *NodeVersionUpdateOne {
+	nvuo.modifiers = append(nvuo.modifiers, modifiers...)
+	return nvuo
 }
 
 func (nvuo *NodeVersionUpdateOne) sqlSave(ctx context.Context) (_node *NodeVersion, err error) {
@@ -539,6 +627,12 @@ func (nvuo *NodeVersionUpdateOne) sqlSave(ctx context.Context) (_node *NodeVersi
 	}
 	if value, ok := nvuo.mutation.Deprecated(); ok {
 		_spec.SetField(nodeversion.FieldDeprecated, field.TypeBool, value)
+	}
+	if value, ok := nvuo.mutation.Status(); ok {
+		_spec.SetField(nodeversion.FieldStatus, field.TypeEnum, value)
+	}
+	if value, ok := nvuo.mutation.StatusReason(); ok {
+		_spec.SetField(nodeversion.FieldStatusReason, field.TypeString, value)
 	}
 	if nvuo.mutation.NodeCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -598,6 +692,7 @@ func (nvuo *NodeVersionUpdateOne) sqlSave(ctx context.Context) (_node *NodeVersi
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.AddModifiers(nvuo.modifiers...)
 	_node = &NodeVersion{config: nvuo.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

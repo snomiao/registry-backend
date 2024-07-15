@@ -3,6 +3,8 @@
 package nodeversion
 
 import (
+	"fmt"
+	"registry-backend/ent/schema"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
@@ -29,6 +31,10 @@ const (
 	FieldPipDependencies = "pip_dependencies"
 	// FieldDeprecated holds the string denoting the deprecated field in the database.
 	FieldDeprecated = "deprecated"
+	// FieldStatus holds the string denoting the status field in the database.
+	FieldStatus = "status"
+	// FieldStatusReason holds the string denoting the status_reason field in the database.
+	FieldStatusReason = "status_reason"
 	// EdgeNode holds the string denoting the node edge name in mutations.
 	EdgeNode = "node"
 	// EdgeStorageFile holds the string denoting the storage_file edge name in mutations.
@@ -61,6 +67,8 @@ var Columns = []string{
 	FieldChangelog,
 	FieldPipDependencies,
 	FieldDeprecated,
+	FieldStatus,
+	FieldStatusReason,
 }
 
 // ForeignKeys holds the SQL foreign-keys that are owned by the "node_versions"
@@ -93,9 +101,23 @@ var (
 	UpdateDefaultUpdateTime func() time.Time
 	// DefaultDeprecated holds the default value on creation for the "deprecated" field.
 	DefaultDeprecated bool
+	// DefaultStatusReason holds the default value on creation for the "status_reason" field.
+	DefaultStatusReason string
 	// DefaultID holds the default value on creation for the "id" field.
 	DefaultID func() uuid.UUID
 )
+
+const DefaultStatus schema.NodeVersionStatus = "pending"
+
+// StatusValidator is a validator for the "status" field enum values. It is called by the builders before save.
+func StatusValidator(s schema.NodeVersionStatus) error {
+	switch s {
+	case "active", "banned", "deleted", "pending", "flagged":
+		return nil
+	default:
+		return fmt.Errorf("nodeversion: invalid enum value for status field: %q", s)
+	}
+}
 
 // OrderOption defines the ordering options for the NodeVersion queries.
 type OrderOption func(*sql.Selector)
@@ -133,6 +155,16 @@ func ByChangelog(opts ...sql.OrderTermOption) OrderOption {
 // ByDeprecated orders the results by the deprecated field.
 func ByDeprecated(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDeprecated, opts...).ToFunc()
+}
+
+// ByStatus orders the results by the status field.
+func ByStatus(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldStatus, opts...).ToFunc()
+}
+
+// ByStatusReason orders the results by the status_reason field.
+func ByStatusReason(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldStatusReason, opts...).ToFunc()
 }
 
 // ByNodeField orders the results by node field.

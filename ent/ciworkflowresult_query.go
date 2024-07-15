@@ -4,6 +4,7 @@ package ent
 
 import (
 	"context"
+	"database/sql/driver"
 	"fmt"
 	"math"
 	"registry-backend/ent/ciworkflowresult"
@@ -101,7 +102,7 @@ func (cwrq *CIWorkflowResultQuery) QueryStorageFile() *StorageFileQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(ciworkflowresult.Table, ciworkflowresult.FieldID, selector),
 			sqlgraph.To(storagefile.Table, storagefile.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, false, ciworkflowresult.StorageFileTable, ciworkflowresult.StorageFileColumn),
+			sqlgraph.Edge(sqlgraph.O2M, false, ciworkflowresult.StorageFileTable, ciworkflowresult.StorageFileColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(cwrq.driver.Dialect(), step)
 		return fromU, nil
@@ -415,7 +416,7 @@ func (cwrq *CIWorkflowResultQuery) sqlAll(ctx context.Context, hooks ...queryHoo
 			cwrq.withStorageFile != nil,
 		}
 	)
-	if cwrq.withGitcommit != nil || cwrq.withStorageFile != nil {
+	if cwrq.withGitcommit != nil {
 		withFKs = true
 	}
 	if withFKs {
@@ -449,8 +450,9 @@ func (cwrq *CIWorkflowResultQuery) sqlAll(ctx context.Context, hooks ...queryHoo
 		}
 	}
 	if query := cwrq.withStorageFile; query != nil {
-		if err := cwrq.loadStorageFile(ctx, query, nodes, nil,
-			func(n *CIWorkflowResult, e *StorageFile) { n.Edges.StorageFile = e }); err != nil {
+		if err := cwrq.loadStorageFile(ctx, query, nodes,
+			func(n *CIWorkflowResult) { n.Edges.StorageFile = []*StorageFile{} },
+			func(n *CIWorkflowResult, e *StorageFile) { n.Edges.StorageFile = append(n.Edges.StorageFile, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -490,34 +492,33 @@ func (cwrq *CIWorkflowResultQuery) loadGitcommit(ctx context.Context, query *Git
 	return nil
 }
 func (cwrq *CIWorkflowResultQuery) loadStorageFile(ctx context.Context, query *StorageFileQuery, nodes []*CIWorkflowResult, init func(*CIWorkflowResult), assign func(*CIWorkflowResult, *StorageFile)) error {
-	ids := make([]uuid.UUID, 0, len(nodes))
-	nodeids := make(map[uuid.UUID][]*CIWorkflowResult)
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*CIWorkflowResult)
 	for i := range nodes {
-		if nodes[i].ci_workflow_result_storage_file == nil {
-			continue
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
 		}
-		fk := *nodes[i].ci_workflow_result_storage_file
-		if _, ok := nodeids[fk]; !ok {
-			ids = append(ids, fk)
-		}
-		nodeids[fk] = append(nodeids[fk], nodes[i])
 	}
-	if len(ids) == 0 {
-		return nil
-	}
-	query.Where(storagefile.IDIn(ids...))
+	query.withFKs = true
+	query.Where(predicate.StorageFile(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(ciworkflowresult.StorageFileColumn), fks...))
+	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {
 		return err
 	}
 	for _, n := range neighbors {
-		nodes, ok := nodeids[n.ID]
+		fk := n.ci_workflow_result_storage_file
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "ci_workflow_result_storage_file" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "ci_workflow_result_storage_file" returned %v`, n.ID)
+			return fmt.Errorf(`unexpected referenced foreign-key "ci_workflow_result_storage_file" returned %v for node %v`, *fk, n.ID)
 		}
-		for i := range nodes {
-			assign(nodes[i], n)
-		}
+		assign(node, n)
 	}
 	return nil
 }
@@ -635,6 +636,12 @@ func (cwrq *CIWorkflowResultQuery) ForShare(opts ...sql.LockOption) *CIWorkflowR
 	return cwrq
 }
 
+// Modify adds a query modifier for attaching custom logic to queries.
+func (cwrq *CIWorkflowResultQuery) Modify(modifiers ...func(s *sql.Selector)) *CIWorkflowResultSelect {
+	cwrq.modifiers = append(cwrq.modifiers, modifiers...)
+	return cwrq.Select()
+}
+
 // CIWorkflowResultGroupBy is the group-by builder for CIWorkflowResult entities.
 type CIWorkflowResultGroupBy struct {
 	selector
@@ -723,4 +730,10 @@ func (cwrs *CIWorkflowResultSelect) sqlScan(ctx context.Context, root *CIWorkflo
 	}
 	defer rows.Close()
 	return sql.ScanSlice(rows, v)
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (cwrs *CIWorkflowResultSelect) Modify(modifiers ...func(s *sql.Selector)) *CIWorkflowResultSelect {
+	cwrs.modifiers = append(cwrs.modifiers, modifiers...)
+	return cwrs
 }

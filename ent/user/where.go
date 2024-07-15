@@ -4,6 +4,7 @@ package user
 
 import (
 	"registry-backend/ent/predicate"
+	"registry-backend/ent/schema"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
@@ -345,6 +346,36 @@ func IsAdminNEQ(v bool) predicate.User {
 	return predicate.User(sql.FieldNEQ(FieldIsAdmin, v))
 }
 
+// StatusEQ applies the EQ predicate on the "status" field.
+func StatusEQ(v schema.UserStatusType) predicate.User {
+	vc := v
+	return predicate.User(sql.FieldEQ(FieldStatus, vc))
+}
+
+// StatusNEQ applies the NEQ predicate on the "status" field.
+func StatusNEQ(v schema.UserStatusType) predicate.User {
+	vc := v
+	return predicate.User(sql.FieldNEQ(FieldStatus, vc))
+}
+
+// StatusIn applies the In predicate on the "status" field.
+func StatusIn(vs ...schema.UserStatusType) predicate.User {
+	v := make([]any, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.User(sql.FieldIn(FieldStatus, v...))
+}
+
+// StatusNotIn applies the NotIn predicate on the "status" field.
+func StatusNotIn(vs ...schema.UserStatusType) predicate.User {
+	v := make([]any, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.User(sql.FieldNotIn(FieldStatus, v...))
+}
+
 // HasPublisherPermissions applies the HasEdge predicate on the "publisher_permissions" edge.
 func HasPublisherPermissions() predicate.User {
 	return predicate.User(func(s *sql.Selector) {
@@ -360,6 +391,29 @@ func HasPublisherPermissions() predicate.User {
 func HasPublisherPermissionsWith(preds ...predicate.PublisherPermission) predicate.User {
 	return predicate.User(func(s *sql.Selector) {
 		step := newPublisherPermissionsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasReviews applies the HasEdge predicate on the "reviews" edge.
+func HasReviews() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, ReviewsTable, ReviewsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasReviewsWith applies the HasEdge predicate on the "reviews" edge with a given conditions (other predicates).
+func HasReviewsWith(preds ...predicate.NodeReview) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newReviewsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

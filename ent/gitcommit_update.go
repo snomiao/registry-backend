@@ -20,8 +20,9 @@ import (
 // GitCommitUpdate is the builder for updating GitCommit entities.
 type GitCommitUpdate struct {
 	config
-	hooks    []Hook
-	mutation *GitCommitMutation
+	hooks     []Hook
+	mutation  *GitCommitMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // Where appends a list predicates to the GitCommitUpdate builder.
@@ -146,6 +147,26 @@ func (gcu *GitCommitUpdate) ClearTimestamp() *GitCommitUpdate {
 	return gcu
 }
 
+// SetPrNumber sets the "pr_number" field.
+func (gcu *GitCommitUpdate) SetPrNumber(s string) *GitCommitUpdate {
+	gcu.mutation.SetPrNumber(s)
+	return gcu
+}
+
+// SetNillablePrNumber sets the "pr_number" field if the given value is not nil.
+func (gcu *GitCommitUpdate) SetNillablePrNumber(s *string) *GitCommitUpdate {
+	if s != nil {
+		gcu.SetPrNumber(*s)
+	}
+	return gcu
+}
+
+// ClearPrNumber clears the value of the "pr_number" field.
+func (gcu *GitCommitUpdate) ClearPrNumber() *GitCommitUpdate {
+	gcu.mutation.ClearPrNumber()
+	return gcu
+}
+
 // AddResultIDs adds the "results" edge to the CIWorkflowResult entity by IDs.
 func (gcu *GitCommitUpdate) AddResultIDs(ids ...uuid.UUID) *GitCommitUpdate {
 	gcu.mutation.AddResultIDs(ids...)
@@ -223,6 +244,12 @@ func (gcu *GitCommitUpdate) defaults() {
 	}
 }
 
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (gcu *GitCommitUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *GitCommitUpdate {
+	gcu.modifiers = append(gcu.modifiers, modifiers...)
+	return gcu
+}
+
 func (gcu *GitCommitUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(gitcommit.Table, gitcommit.Columns, sqlgraph.NewFieldSpec(gitcommit.FieldID, field.TypeUUID))
 	if ps := gcu.mutation.predicates; len(ps) > 0 {
@@ -261,6 +288,12 @@ func (gcu *GitCommitUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if gcu.mutation.TimestampCleared() {
 		_spec.ClearField(gitcommit.FieldTimestamp, field.TypeTime)
+	}
+	if value, ok := gcu.mutation.PrNumber(); ok {
+		_spec.SetField(gitcommit.FieldPrNumber, field.TypeString, value)
+	}
+	if gcu.mutation.PrNumberCleared() {
+		_spec.ClearField(gitcommit.FieldPrNumber, field.TypeString)
 	}
 	if gcu.mutation.ResultsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -307,6 +340,7 @@ func (gcu *GitCommitUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.AddModifiers(gcu.modifiers...)
 	if n, err = sqlgraph.UpdateNodes(ctx, gcu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{gitcommit.Label}
@@ -322,9 +356,10 @@ func (gcu *GitCommitUpdate) sqlSave(ctx context.Context) (n int, err error) {
 // GitCommitUpdateOne is the builder for updating a single GitCommit entity.
 type GitCommitUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *GitCommitMutation
+	fields    []string
+	hooks     []Hook
+	mutation  *GitCommitMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // SetUpdateTime sets the "update_time" field.
@@ -443,6 +478,26 @@ func (gcuo *GitCommitUpdateOne) ClearTimestamp() *GitCommitUpdateOne {
 	return gcuo
 }
 
+// SetPrNumber sets the "pr_number" field.
+func (gcuo *GitCommitUpdateOne) SetPrNumber(s string) *GitCommitUpdateOne {
+	gcuo.mutation.SetPrNumber(s)
+	return gcuo
+}
+
+// SetNillablePrNumber sets the "pr_number" field if the given value is not nil.
+func (gcuo *GitCommitUpdateOne) SetNillablePrNumber(s *string) *GitCommitUpdateOne {
+	if s != nil {
+		gcuo.SetPrNumber(*s)
+	}
+	return gcuo
+}
+
+// ClearPrNumber clears the value of the "pr_number" field.
+func (gcuo *GitCommitUpdateOne) ClearPrNumber() *GitCommitUpdateOne {
+	gcuo.mutation.ClearPrNumber()
+	return gcuo
+}
+
 // AddResultIDs adds the "results" edge to the CIWorkflowResult entity by IDs.
 func (gcuo *GitCommitUpdateOne) AddResultIDs(ids ...uuid.UUID) *GitCommitUpdateOne {
 	gcuo.mutation.AddResultIDs(ids...)
@@ -533,6 +588,12 @@ func (gcuo *GitCommitUpdateOne) defaults() {
 	}
 }
 
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (gcuo *GitCommitUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *GitCommitUpdateOne {
+	gcuo.modifiers = append(gcuo.modifiers, modifiers...)
+	return gcuo
+}
+
 func (gcuo *GitCommitUpdateOne) sqlSave(ctx context.Context) (_node *GitCommit, err error) {
 	_spec := sqlgraph.NewUpdateSpec(gitcommit.Table, gitcommit.Columns, sqlgraph.NewFieldSpec(gitcommit.FieldID, field.TypeUUID))
 	id, ok := gcuo.mutation.ID()
@@ -589,6 +650,12 @@ func (gcuo *GitCommitUpdateOne) sqlSave(ctx context.Context) (_node *GitCommit, 
 	if gcuo.mutation.TimestampCleared() {
 		_spec.ClearField(gitcommit.FieldTimestamp, field.TypeTime)
 	}
+	if value, ok := gcuo.mutation.PrNumber(); ok {
+		_spec.SetField(gitcommit.FieldPrNumber, field.TypeString, value)
+	}
+	if gcuo.mutation.PrNumberCleared() {
+		_spec.ClearField(gitcommit.FieldPrNumber, field.TypeString)
+	}
 	if gcuo.mutation.ResultsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -634,6 +701,7 @@ func (gcuo *GitCommitUpdateOne) sqlSave(ctx context.Context) (_node *GitCommit, 
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.AddModifiers(gcuo.modifiers...)
 	_node = &GitCommit{config: gcuo.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

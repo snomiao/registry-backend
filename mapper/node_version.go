@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"registry-backend/drip"
 	"registry-backend/ent"
+	"registry-backend/ent/schema"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/google/uuid"
@@ -50,31 +51,86 @@ func DbNodeVersionToApiNodeVersion(dbNodeVersion *ent.NodeVersion) *drip.NodeVer
 	if dbNodeVersion == nil {
 		return nil
 	}
-	id := dbNodeVersion.ID.String()
 
-	if dbNodeVersion.Edges.StorageFile == nil {
-		return &drip.NodeVersion{
-			Id:           &id,
-			Version:      &dbNodeVersion.Version,
-			Changelog:    &dbNodeVersion.Changelog,
-			Deprecated:   &dbNodeVersion.Deprecated,
-			Dependencies: &dbNodeVersion.PipDependencies,
-			CreatedAt:    &dbNodeVersion.CreateTime,
-		}
+	id := dbNodeVersion.ID.String()
+	var downloadUrl string
+	status := DbNodeVersionStatusToApiNodeVersionStatus(dbNodeVersion.Status)
+	if dbNodeVersion.Edges.StorageFile != nil {
+		downloadUrl = dbNodeVersion.Edges.StorageFile.FileURL
 	}
 
-	return &drip.NodeVersion{
+	apiVersion := &drip.NodeVersion{
 		Id:           &id,
 		Version:      &dbNodeVersion.Version,
 		Changelog:    &dbNodeVersion.Changelog,
-		DownloadUrl:  &dbNodeVersion.Edges.StorageFile.FileURL,
 		Deprecated:   &dbNodeVersion.Deprecated,
 		Dependencies: &dbNodeVersion.PipDependencies,
 		CreatedAt:    &dbNodeVersion.CreateTime,
+		Status:       status,
+		StatusReason: &dbNodeVersion.StatusReason,
+		DownloadUrl:  &downloadUrl,
 	}
+	return apiVersion
 }
 
 func CheckValidSemv(version string) bool {
 	_, err := semver.NewVersion(version)
 	return err == nil
+}
+
+func DbNodeVersionStatusToApiNodeVersionStatus(status schema.NodeVersionStatus) *drip.NodeVersionStatus {
+	var nodeVersionStatus drip.NodeVersionStatus
+
+	switch status {
+	case schema.NodeVersionStatusActive:
+		nodeVersionStatus = drip.NodeVersionStatusActive
+	case schema.NodeVersionStatusBanned:
+		nodeVersionStatus = drip.NodeVersionStatusBanned
+	case schema.NodeVersionStatusDeleted:
+		nodeVersionStatus = drip.NodeVersionStatusDeleted
+	case schema.NodeVersionStatusPending:
+		nodeVersionStatus = drip.NodeVersionStatusPending
+	case schema.NodeVersionStatusFlagged:
+		nodeVersionStatus = drip.NodeVersionStatusFlagged
+	default:
+		nodeVersionStatus = ""
+	}
+
+	return &nodeVersionStatus
+}
+
+func ApiNodeVersionStatusesToDbNodeVersionStatuses(status *[]drip.NodeVersionStatus) []schema.NodeVersionStatus {
+	var nodeVersionStatus []schema.NodeVersionStatus
+
+	if status == nil {
+		return nodeVersionStatus
+	}
+
+	for _, s := range *status {
+		dbNodeVersion := ApiNodeVersionStatusToDbNodeVersionStatus(s)
+		nodeVersionStatus = append(nodeVersionStatus, dbNodeVersion)
+	}
+
+	return nodeVersionStatus
+}
+
+func ApiNodeVersionStatusToDbNodeVersionStatus(status drip.NodeVersionStatus) schema.NodeVersionStatus {
+	var nodeVersionStatus schema.NodeVersionStatus
+
+	switch status {
+	case drip.NodeVersionStatusActive:
+		nodeVersionStatus = schema.NodeVersionStatusActive
+	case drip.NodeVersionStatusBanned:
+		nodeVersionStatus = schema.NodeVersionStatusBanned
+	case drip.NodeVersionStatusDeleted:
+		nodeVersionStatus = schema.NodeVersionStatusDeleted
+	case drip.NodeVersionStatusPending:
+		nodeVersionStatus = schema.NodeVersionStatusPending
+	case drip.NodeVersionStatusFlagged:
+		nodeVersionStatus = schema.NodeVersionStatusFlagged
+	default:
+		nodeVersionStatus = ""
+	}
+
+	return nodeVersionStatus
 }

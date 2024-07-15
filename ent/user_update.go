@@ -6,21 +6,25 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"registry-backend/ent/nodereview"
 	"registry-backend/ent/predicate"
 	"registry-backend/ent/publisherpermission"
+	"registry-backend/ent/schema"
 	"registry-backend/ent/user"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 )
 
 // UserUpdate is the builder for updating User entities.
 type UserUpdate struct {
 	config
-	hooks    []Hook
-	mutation *UserMutation
+	hooks     []Hook
+	mutation  *UserMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // Where appends a list predicates to the UserUpdate builder.
@@ -103,6 +107,20 @@ func (uu *UserUpdate) SetNillableIsAdmin(b *bool) *UserUpdate {
 	return uu
 }
 
+// SetStatus sets the "status" field.
+func (uu *UserUpdate) SetStatus(sst schema.UserStatusType) *UserUpdate {
+	uu.mutation.SetStatus(sst)
+	return uu
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (uu *UserUpdate) SetNillableStatus(sst *schema.UserStatusType) *UserUpdate {
+	if sst != nil {
+		uu.SetStatus(*sst)
+	}
+	return uu
+}
+
 // AddPublisherPermissionIDs adds the "publisher_permissions" edge to the PublisherPermission entity by IDs.
 func (uu *UserUpdate) AddPublisherPermissionIDs(ids ...int) *UserUpdate {
 	uu.mutation.AddPublisherPermissionIDs(ids...)
@@ -116,6 +134,21 @@ func (uu *UserUpdate) AddPublisherPermissions(p ...*PublisherPermission) *UserUp
 		ids[i] = p[i].ID
 	}
 	return uu.AddPublisherPermissionIDs(ids...)
+}
+
+// AddReviewIDs adds the "reviews" edge to the NodeReview entity by IDs.
+func (uu *UserUpdate) AddReviewIDs(ids ...uuid.UUID) *UserUpdate {
+	uu.mutation.AddReviewIDs(ids...)
+	return uu
+}
+
+// AddReviews adds the "reviews" edges to the NodeReview entity.
+func (uu *UserUpdate) AddReviews(n ...*NodeReview) *UserUpdate {
+	ids := make([]uuid.UUID, len(n))
+	for i := range n {
+		ids[i] = n[i].ID
+	}
+	return uu.AddReviewIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -142,6 +175,27 @@ func (uu *UserUpdate) RemovePublisherPermissions(p ...*PublisherPermission) *Use
 		ids[i] = p[i].ID
 	}
 	return uu.RemovePublisherPermissionIDs(ids...)
+}
+
+// ClearReviews clears all "reviews" edges to the NodeReview entity.
+func (uu *UserUpdate) ClearReviews() *UserUpdate {
+	uu.mutation.ClearReviews()
+	return uu
+}
+
+// RemoveReviewIDs removes the "reviews" edge to NodeReview entities by IDs.
+func (uu *UserUpdate) RemoveReviewIDs(ids ...uuid.UUID) *UserUpdate {
+	uu.mutation.RemoveReviewIDs(ids...)
+	return uu
+}
+
+// RemoveReviews removes "reviews" edges to NodeReview entities.
+func (uu *UserUpdate) RemoveReviews(n ...*NodeReview) *UserUpdate {
+	ids := make([]uuid.UUID, len(n))
+	for i := range n {
+		ids[i] = n[i].ID
+	}
+	return uu.RemoveReviewIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -180,7 +234,26 @@ func (uu *UserUpdate) defaults() {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (uu *UserUpdate) check() error {
+	if v, ok := uu.mutation.Status(); ok {
+		if err := user.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "User.status": %w`, err)}
+		}
+	}
+	return nil
+}
+
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (uu *UserUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *UserUpdate {
+	uu.modifiers = append(uu.modifiers, modifiers...)
+	return uu
+}
+
 func (uu *UserUpdate) sqlSave(ctx context.Context) (n int, err error) {
+	if err := uu.check(); err != nil {
+		return n, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(user.Table, user.Columns, sqlgraph.NewFieldSpec(user.FieldID, field.TypeString))
 	if ps := uu.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -209,6 +282,9 @@ func (uu *UserUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if value, ok := uu.mutation.IsAdmin(); ok {
 		_spec.SetField(user.FieldIsAdmin, field.TypeBool, value)
+	}
+	if value, ok := uu.mutation.Status(); ok {
+		_spec.SetField(user.FieldStatus, field.TypeEnum, value)
 	}
 	if uu.mutation.PublisherPermissionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -255,6 +331,52 @@ func (uu *UserUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if uu.mutation.ReviewsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.ReviewsTable,
+			Columns: []string{user.ReviewsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(nodereview.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.RemovedReviewsIDs(); len(nodes) > 0 && !uu.mutation.ReviewsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.ReviewsTable,
+			Columns: []string{user.ReviewsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(nodereview.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.ReviewsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.ReviewsTable,
+			Columns: []string{user.ReviewsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(nodereview.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	_spec.AddModifiers(uu.modifiers...)
 	if n, err = sqlgraph.UpdateNodes(ctx, uu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{user.Label}
@@ -270,9 +392,10 @@ func (uu *UserUpdate) sqlSave(ctx context.Context) (n int, err error) {
 // UserUpdateOne is the builder for updating a single User entity.
 type UserUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *UserMutation
+	fields    []string
+	hooks     []Hook
+	mutation  *UserMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // SetUpdateTime sets the "update_time" field.
@@ -349,6 +472,20 @@ func (uuo *UserUpdateOne) SetNillableIsAdmin(b *bool) *UserUpdateOne {
 	return uuo
 }
 
+// SetStatus sets the "status" field.
+func (uuo *UserUpdateOne) SetStatus(sst schema.UserStatusType) *UserUpdateOne {
+	uuo.mutation.SetStatus(sst)
+	return uuo
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (uuo *UserUpdateOne) SetNillableStatus(sst *schema.UserStatusType) *UserUpdateOne {
+	if sst != nil {
+		uuo.SetStatus(*sst)
+	}
+	return uuo
+}
+
 // AddPublisherPermissionIDs adds the "publisher_permissions" edge to the PublisherPermission entity by IDs.
 func (uuo *UserUpdateOne) AddPublisherPermissionIDs(ids ...int) *UserUpdateOne {
 	uuo.mutation.AddPublisherPermissionIDs(ids...)
@@ -362,6 +499,21 @@ func (uuo *UserUpdateOne) AddPublisherPermissions(p ...*PublisherPermission) *Us
 		ids[i] = p[i].ID
 	}
 	return uuo.AddPublisherPermissionIDs(ids...)
+}
+
+// AddReviewIDs adds the "reviews" edge to the NodeReview entity by IDs.
+func (uuo *UserUpdateOne) AddReviewIDs(ids ...uuid.UUID) *UserUpdateOne {
+	uuo.mutation.AddReviewIDs(ids...)
+	return uuo
+}
+
+// AddReviews adds the "reviews" edges to the NodeReview entity.
+func (uuo *UserUpdateOne) AddReviews(n ...*NodeReview) *UserUpdateOne {
+	ids := make([]uuid.UUID, len(n))
+	for i := range n {
+		ids[i] = n[i].ID
+	}
+	return uuo.AddReviewIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -388,6 +540,27 @@ func (uuo *UserUpdateOne) RemovePublisherPermissions(p ...*PublisherPermission) 
 		ids[i] = p[i].ID
 	}
 	return uuo.RemovePublisherPermissionIDs(ids...)
+}
+
+// ClearReviews clears all "reviews" edges to the NodeReview entity.
+func (uuo *UserUpdateOne) ClearReviews() *UserUpdateOne {
+	uuo.mutation.ClearReviews()
+	return uuo
+}
+
+// RemoveReviewIDs removes the "reviews" edge to NodeReview entities by IDs.
+func (uuo *UserUpdateOne) RemoveReviewIDs(ids ...uuid.UUID) *UserUpdateOne {
+	uuo.mutation.RemoveReviewIDs(ids...)
+	return uuo
+}
+
+// RemoveReviews removes "reviews" edges to NodeReview entities.
+func (uuo *UserUpdateOne) RemoveReviews(n ...*NodeReview) *UserUpdateOne {
+	ids := make([]uuid.UUID, len(n))
+	for i := range n {
+		ids[i] = n[i].ID
+	}
+	return uuo.RemoveReviewIDs(ids...)
 }
 
 // Where appends a list predicates to the UserUpdate builder.
@@ -439,7 +612,26 @@ func (uuo *UserUpdateOne) defaults() {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (uuo *UserUpdateOne) check() error {
+	if v, ok := uuo.mutation.Status(); ok {
+		if err := user.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "User.status": %w`, err)}
+		}
+	}
+	return nil
+}
+
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (uuo *UserUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *UserUpdateOne {
+	uuo.modifiers = append(uuo.modifiers, modifiers...)
+	return uuo
+}
+
 func (uuo *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
+	if err := uuo.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(user.Table, user.Columns, sqlgraph.NewFieldSpec(user.FieldID, field.TypeString))
 	id, ok := uuo.mutation.ID()
 	if !ok {
@@ -486,6 +678,9 @@ func (uuo *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) 
 	if value, ok := uuo.mutation.IsAdmin(); ok {
 		_spec.SetField(user.FieldIsAdmin, field.TypeBool, value)
 	}
+	if value, ok := uuo.mutation.Status(); ok {
+		_spec.SetField(user.FieldStatus, field.TypeEnum, value)
+	}
 	if uuo.mutation.PublisherPermissionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -531,6 +726,52 @@ func (uuo *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) 
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if uuo.mutation.ReviewsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.ReviewsTable,
+			Columns: []string{user.ReviewsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(nodereview.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.RemovedReviewsIDs(); len(nodes) > 0 && !uuo.mutation.ReviewsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.ReviewsTable,
+			Columns: []string{user.ReviewsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(nodereview.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.ReviewsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.ReviewsTable,
+			Columns: []string{user.ReviewsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(nodereview.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	_spec.AddModifiers(uuo.modifiers...)
 	_node = &User{config: uuo.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

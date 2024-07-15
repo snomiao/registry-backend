@@ -1,26 +1,21 @@
-package drip_middleware_test
+package drip_authentication
 
 import (
 	"net/http"
 	"net/http/httptest"
-	"registry-backend/ent"
-	drip_middleware "registry-backend/server/middleware"
 	"testing"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestAllowlist(t *testing.T) {
+func TestServiceAccountAllowList(t *testing.T) {
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
-	// Mock ent.Client
-	mockEntClient := &ent.Client{}
-
-	middleware := drip_middleware.FirebaseMiddleware(mockEntClient)
+	middleware := ServiceAccountAuthMiddleware()
 
 	tests := []struct {
 		name    string
@@ -38,10 +33,13 @@ func TestAllowlist(t *testing.T) {
 		{"Git Commit GET", "/gitcommit", "GET", true},
 		{"Branch GET", "/branch", "GET", true},
 		{"Node Version Path POST", "/publishers/pub123/nodes/node456/versions", "POST", true},
-		{"Publisher POST", "/publishers", "POST", false},
-		{"Unauthorized Path", "/nonexistent", "GET", false},
+		{"Publisher POST", "/publishers", "POST", true},
+		{"Unauthorized Path", "/nonexistent", "GET", true},
 		{"Get All Nodes", "/nodes", "GET", true},
 		{"Install Nodes", "/nodes/node-id/install", "GET", true},
+
+		{"Reindex Nodes", "/nodes/reindex", "POST", false},
+		{"Reindex Nodes", "/security-scan", "GET", false},
 	}
 
 	for _, tt := range tests {

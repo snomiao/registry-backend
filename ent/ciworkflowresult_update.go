@@ -9,6 +9,7 @@ import (
 	"registry-backend/ent/ciworkflowresult"
 	"registry-backend/ent/gitcommit"
 	"registry-backend/ent/predicate"
+	"registry-backend/ent/schema"
 	"registry-backend/ent/storagefile"
 	"time"
 
@@ -21,8 +22,9 @@ import (
 // CIWorkflowResultUpdate is the builder for updating CIWorkflowResult entities.
 type CIWorkflowResultUpdate struct {
 	config
-	hooks    []Hook
-	mutation *CIWorkflowResultMutation
+	hooks     []Hook
+	mutation  *CIWorkflowResultMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // Where appends a list predicates to the CIWorkflowResultUpdate builder.
@@ -48,46 +50,6 @@ func (cwru *CIWorkflowResultUpdate) SetNillableOperatingSystem(s *string) *CIWor
 	if s != nil {
 		cwru.SetOperatingSystem(*s)
 	}
-	return cwru
-}
-
-// SetGpuType sets the "gpu_type" field.
-func (cwru *CIWorkflowResultUpdate) SetGpuType(s string) *CIWorkflowResultUpdate {
-	cwru.mutation.SetGpuType(s)
-	return cwru
-}
-
-// SetNillableGpuType sets the "gpu_type" field if the given value is not nil.
-func (cwru *CIWorkflowResultUpdate) SetNillableGpuType(s *string) *CIWorkflowResultUpdate {
-	if s != nil {
-		cwru.SetGpuType(*s)
-	}
-	return cwru
-}
-
-// ClearGpuType clears the value of the "gpu_type" field.
-func (cwru *CIWorkflowResultUpdate) ClearGpuType() *CIWorkflowResultUpdate {
-	cwru.mutation.ClearGpuType()
-	return cwru
-}
-
-// SetPytorchVersion sets the "pytorch_version" field.
-func (cwru *CIWorkflowResultUpdate) SetPytorchVersion(s string) *CIWorkflowResultUpdate {
-	cwru.mutation.SetPytorchVersion(s)
-	return cwru
-}
-
-// SetNillablePytorchVersion sets the "pytorch_version" field if the given value is not nil.
-func (cwru *CIWorkflowResultUpdate) SetNillablePytorchVersion(s *string) *CIWorkflowResultUpdate {
-	if s != nil {
-		cwru.SetPytorchVersion(*s)
-	}
-	return cwru
-}
-
-// ClearPytorchVersion clears the value of the "pytorch_version" field.
-func (cwru *CIWorkflowResultUpdate) ClearPytorchVersion() *CIWorkflowResultUpdate {
-	cwru.mutation.ClearPytorchVersion()
 	return cwru
 }
 
@@ -131,23 +93,37 @@ func (cwru *CIWorkflowResultUpdate) ClearRunID() *CIWorkflowResultUpdate {
 	return cwru
 }
 
-// SetStatus sets the "status" field.
-func (cwru *CIWorkflowResultUpdate) SetStatus(s string) *CIWorkflowResultUpdate {
-	cwru.mutation.SetStatus(s)
+// SetJobID sets the "job_id" field.
+func (cwru *CIWorkflowResultUpdate) SetJobID(s string) *CIWorkflowResultUpdate {
+	cwru.mutation.SetJobID(s)
 	return cwru
 }
 
-// SetNillableStatus sets the "status" field if the given value is not nil.
-func (cwru *CIWorkflowResultUpdate) SetNillableStatus(s *string) *CIWorkflowResultUpdate {
+// SetNillableJobID sets the "job_id" field if the given value is not nil.
+func (cwru *CIWorkflowResultUpdate) SetNillableJobID(s *string) *CIWorkflowResultUpdate {
 	if s != nil {
-		cwru.SetStatus(*s)
+		cwru.SetJobID(*s)
 	}
 	return cwru
 }
 
-// ClearStatus clears the value of the "status" field.
-func (cwru *CIWorkflowResultUpdate) ClearStatus() *CIWorkflowResultUpdate {
-	cwru.mutation.ClearStatus()
+// ClearJobID clears the value of the "job_id" field.
+func (cwru *CIWorkflowResultUpdate) ClearJobID() *CIWorkflowResultUpdate {
+	cwru.mutation.ClearJobID()
+	return cwru
+}
+
+// SetStatus sets the "status" field.
+func (cwru *CIWorkflowResultUpdate) SetStatus(srst schema.WorkflowRunStatusType) *CIWorkflowResultUpdate {
+	cwru.mutation.SetStatus(srst)
+	return cwru
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (cwru *CIWorkflowResultUpdate) SetNillableStatus(srst *schema.WorkflowRunStatusType) *CIWorkflowResultUpdate {
+	if srst != nil {
+		cwru.SetStatus(*srst)
+	}
 	return cwru
 }
 
@@ -205,6 +181,172 @@ func (cwru *CIWorkflowResultUpdate) ClearEndTime() *CIWorkflowResultUpdate {
 	return cwru
 }
 
+// SetPythonVersion sets the "python_version" field.
+func (cwru *CIWorkflowResultUpdate) SetPythonVersion(s string) *CIWorkflowResultUpdate {
+	cwru.mutation.SetPythonVersion(s)
+	return cwru
+}
+
+// SetNillablePythonVersion sets the "python_version" field if the given value is not nil.
+func (cwru *CIWorkflowResultUpdate) SetNillablePythonVersion(s *string) *CIWorkflowResultUpdate {
+	if s != nil {
+		cwru.SetPythonVersion(*s)
+	}
+	return cwru
+}
+
+// ClearPythonVersion clears the value of the "python_version" field.
+func (cwru *CIWorkflowResultUpdate) ClearPythonVersion() *CIWorkflowResultUpdate {
+	cwru.mutation.ClearPythonVersion()
+	return cwru
+}
+
+// SetPytorchVersion sets the "pytorch_version" field.
+func (cwru *CIWorkflowResultUpdate) SetPytorchVersion(s string) *CIWorkflowResultUpdate {
+	cwru.mutation.SetPytorchVersion(s)
+	return cwru
+}
+
+// SetNillablePytorchVersion sets the "pytorch_version" field if the given value is not nil.
+func (cwru *CIWorkflowResultUpdate) SetNillablePytorchVersion(s *string) *CIWorkflowResultUpdate {
+	if s != nil {
+		cwru.SetPytorchVersion(*s)
+	}
+	return cwru
+}
+
+// ClearPytorchVersion clears the value of the "pytorch_version" field.
+func (cwru *CIWorkflowResultUpdate) ClearPytorchVersion() *CIWorkflowResultUpdate {
+	cwru.mutation.ClearPytorchVersion()
+	return cwru
+}
+
+// SetCudaVersion sets the "cuda_version" field.
+func (cwru *CIWorkflowResultUpdate) SetCudaVersion(s string) *CIWorkflowResultUpdate {
+	cwru.mutation.SetCudaVersion(s)
+	return cwru
+}
+
+// SetNillableCudaVersion sets the "cuda_version" field if the given value is not nil.
+func (cwru *CIWorkflowResultUpdate) SetNillableCudaVersion(s *string) *CIWorkflowResultUpdate {
+	if s != nil {
+		cwru.SetCudaVersion(*s)
+	}
+	return cwru
+}
+
+// ClearCudaVersion clears the value of the "cuda_version" field.
+func (cwru *CIWorkflowResultUpdate) ClearCudaVersion() *CIWorkflowResultUpdate {
+	cwru.mutation.ClearCudaVersion()
+	return cwru
+}
+
+// SetComfyRunFlags sets the "comfy_run_flags" field.
+func (cwru *CIWorkflowResultUpdate) SetComfyRunFlags(s string) *CIWorkflowResultUpdate {
+	cwru.mutation.SetComfyRunFlags(s)
+	return cwru
+}
+
+// SetNillableComfyRunFlags sets the "comfy_run_flags" field if the given value is not nil.
+func (cwru *CIWorkflowResultUpdate) SetNillableComfyRunFlags(s *string) *CIWorkflowResultUpdate {
+	if s != nil {
+		cwru.SetComfyRunFlags(*s)
+	}
+	return cwru
+}
+
+// ClearComfyRunFlags clears the value of the "comfy_run_flags" field.
+func (cwru *CIWorkflowResultUpdate) ClearComfyRunFlags() *CIWorkflowResultUpdate {
+	cwru.mutation.ClearComfyRunFlags()
+	return cwru
+}
+
+// SetAvgVram sets the "avg_vram" field.
+func (cwru *CIWorkflowResultUpdate) SetAvgVram(i int) *CIWorkflowResultUpdate {
+	cwru.mutation.ResetAvgVram()
+	cwru.mutation.SetAvgVram(i)
+	return cwru
+}
+
+// SetNillableAvgVram sets the "avg_vram" field if the given value is not nil.
+func (cwru *CIWorkflowResultUpdate) SetNillableAvgVram(i *int) *CIWorkflowResultUpdate {
+	if i != nil {
+		cwru.SetAvgVram(*i)
+	}
+	return cwru
+}
+
+// AddAvgVram adds i to the "avg_vram" field.
+func (cwru *CIWorkflowResultUpdate) AddAvgVram(i int) *CIWorkflowResultUpdate {
+	cwru.mutation.AddAvgVram(i)
+	return cwru
+}
+
+// ClearAvgVram clears the value of the "avg_vram" field.
+func (cwru *CIWorkflowResultUpdate) ClearAvgVram() *CIWorkflowResultUpdate {
+	cwru.mutation.ClearAvgVram()
+	return cwru
+}
+
+// SetPeakVram sets the "peak_vram" field.
+func (cwru *CIWorkflowResultUpdate) SetPeakVram(i int) *CIWorkflowResultUpdate {
+	cwru.mutation.ResetPeakVram()
+	cwru.mutation.SetPeakVram(i)
+	return cwru
+}
+
+// SetNillablePeakVram sets the "peak_vram" field if the given value is not nil.
+func (cwru *CIWorkflowResultUpdate) SetNillablePeakVram(i *int) *CIWorkflowResultUpdate {
+	if i != nil {
+		cwru.SetPeakVram(*i)
+	}
+	return cwru
+}
+
+// AddPeakVram adds i to the "peak_vram" field.
+func (cwru *CIWorkflowResultUpdate) AddPeakVram(i int) *CIWorkflowResultUpdate {
+	cwru.mutation.AddPeakVram(i)
+	return cwru
+}
+
+// ClearPeakVram clears the value of the "peak_vram" field.
+func (cwru *CIWorkflowResultUpdate) ClearPeakVram() *CIWorkflowResultUpdate {
+	cwru.mutation.ClearPeakVram()
+	return cwru
+}
+
+// SetJobTriggerUser sets the "job_trigger_user" field.
+func (cwru *CIWorkflowResultUpdate) SetJobTriggerUser(s string) *CIWorkflowResultUpdate {
+	cwru.mutation.SetJobTriggerUser(s)
+	return cwru
+}
+
+// SetNillableJobTriggerUser sets the "job_trigger_user" field if the given value is not nil.
+func (cwru *CIWorkflowResultUpdate) SetNillableJobTriggerUser(s *string) *CIWorkflowResultUpdate {
+	if s != nil {
+		cwru.SetJobTriggerUser(*s)
+	}
+	return cwru
+}
+
+// ClearJobTriggerUser clears the value of the "job_trigger_user" field.
+func (cwru *CIWorkflowResultUpdate) ClearJobTriggerUser() *CIWorkflowResultUpdate {
+	cwru.mutation.ClearJobTriggerUser()
+	return cwru
+}
+
+// SetMetadata sets the "metadata" field.
+func (cwru *CIWorkflowResultUpdate) SetMetadata(m map[string]interface{}) *CIWorkflowResultUpdate {
+	cwru.mutation.SetMetadata(m)
+	return cwru
+}
+
+// ClearMetadata clears the value of the "metadata" field.
+func (cwru *CIWorkflowResultUpdate) ClearMetadata() *CIWorkflowResultUpdate {
+	cwru.mutation.ClearMetadata()
+	return cwru
+}
+
 // SetGitcommitID sets the "gitcommit" edge to the GitCommit entity by ID.
 func (cwru *CIWorkflowResultUpdate) SetGitcommitID(id uuid.UUID) *CIWorkflowResultUpdate {
 	cwru.mutation.SetGitcommitID(id)
@@ -224,23 +366,19 @@ func (cwru *CIWorkflowResultUpdate) SetGitcommit(g *GitCommit) *CIWorkflowResult
 	return cwru.SetGitcommitID(g.ID)
 }
 
-// SetStorageFileID sets the "storage_file" edge to the StorageFile entity by ID.
-func (cwru *CIWorkflowResultUpdate) SetStorageFileID(id uuid.UUID) *CIWorkflowResultUpdate {
-	cwru.mutation.SetStorageFileID(id)
+// AddStorageFileIDs adds the "storage_file" edge to the StorageFile entity by IDs.
+func (cwru *CIWorkflowResultUpdate) AddStorageFileIDs(ids ...uuid.UUID) *CIWorkflowResultUpdate {
+	cwru.mutation.AddStorageFileIDs(ids...)
 	return cwru
 }
 
-// SetNillableStorageFileID sets the "storage_file" edge to the StorageFile entity by ID if the given value is not nil.
-func (cwru *CIWorkflowResultUpdate) SetNillableStorageFileID(id *uuid.UUID) *CIWorkflowResultUpdate {
-	if id != nil {
-		cwru = cwru.SetStorageFileID(*id)
+// AddStorageFile adds the "storage_file" edges to the StorageFile entity.
+func (cwru *CIWorkflowResultUpdate) AddStorageFile(s ...*StorageFile) *CIWorkflowResultUpdate {
+	ids := make([]uuid.UUID, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
 	}
-	return cwru
-}
-
-// SetStorageFile sets the "storage_file" edge to the StorageFile entity.
-func (cwru *CIWorkflowResultUpdate) SetStorageFile(s *StorageFile) *CIWorkflowResultUpdate {
-	return cwru.SetStorageFileID(s.ID)
+	return cwru.AddStorageFileIDs(ids...)
 }
 
 // Mutation returns the CIWorkflowResultMutation object of the builder.
@@ -254,10 +392,25 @@ func (cwru *CIWorkflowResultUpdate) ClearGitcommit() *CIWorkflowResultUpdate {
 	return cwru
 }
 
-// ClearStorageFile clears the "storage_file" edge to the StorageFile entity.
+// ClearStorageFile clears all "storage_file" edges to the StorageFile entity.
 func (cwru *CIWorkflowResultUpdate) ClearStorageFile() *CIWorkflowResultUpdate {
 	cwru.mutation.ClearStorageFile()
 	return cwru
+}
+
+// RemoveStorageFileIDs removes the "storage_file" edge to StorageFile entities by IDs.
+func (cwru *CIWorkflowResultUpdate) RemoveStorageFileIDs(ids ...uuid.UUID) *CIWorkflowResultUpdate {
+	cwru.mutation.RemoveStorageFileIDs(ids...)
+	return cwru
+}
+
+// RemoveStorageFile removes "storage_file" edges to StorageFile entities.
+func (cwru *CIWorkflowResultUpdate) RemoveStorageFile(s ...*StorageFile) *CIWorkflowResultUpdate {
+	ids := make([]uuid.UUID, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return cwru.RemoveStorageFileIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -296,6 +449,12 @@ func (cwru *CIWorkflowResultUpdate) defaults() {
 	}
 }
 
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (cwru *CIWorkflowResultUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *CIWorkflowResultUpdate {
+	cwru.modifiers = append(cwru.modifiers, modifiers...)
+	return cwru
+}
+
 func (cwru *CIWorkflowResultUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(ciworkflowresult.Table, ciworkflowresult.Columns, sqlgraph.NewFieldSpec(ciworkflowresult.FieldID, field.TypeUUID))
 	if ps := cwru.mutation.predicates; len(ps) > 0 {
@@ -311,18 +470,6 @@ func (cwru *CIWorkflowResultUpdate) sqlSave(ctx context.Context) (n int, err err
 	if value, ok := cwru.mutation.OperatingSystem(); ok {
 		_spec.SetField(ciworkflowresult.FieldOperatingSystem, field.TypeString, value)
 	}
-	if value, ok := cwru.mutation.GpuType(); ok {
-		_spec.SetField(ciworkflowresult.FieldGpuType, field.TypeString, value)
-	}
-	if cwru.mutation.GpuTypeCleared() {
-		_spec.ClearField(ciworkflowresult.FieldGpuType, field.TypeString)
-	}
-	if value, ok := cwru.mutation.PytorchVersion(); ok {
-		_spec.SetField(ciworkflowresult.FieldPytorchVersion, field.TypeString, value)
-	}
-	if cwru.mutation.PytorchVersionCleared() {
-		_spec.ClearField(ciworkflowresult.FieldPytorchVersion, field.TypeString)
-	}
 	if value, ok := cwru.mutation.WorkflowName(); ok {
 		_spec.SetField(ciworkflowresult.FieldWorkflowName, field.TypeString, value)
 	}
@@ -335,11 +482,14 @@ func (cwru *CIWorkflowResultUpdate) sqlSave(ctx context.Context) (n int, err err
 	if cwru.mutation.RunIDCleared() {
 		_spec.ClearField(ciworkflowresult.FieldRunID, field.TypeString)
 	}
+	if value, ok := cwru.mutation.JobID(); ok {
+		_spec.SetField(ciworkflowresult.FieldJobID, field.TypeString, value)
+	}
+	if cwru.mutation.JobIDCleared() {
+		_spec.ClearField(ciworkflowresult.FieldJobID, field.TypeString)
+	}
 	if value, ok := cwru.mutation.Status(); ok {
 		_spec.SetField(ciworkflowresult.FieldStatus, field.TypeString, value)
-	}
-	if cwru.mutation.StatusCleared() {
-		_spec.ClearField(ciworkflowresult.FieldStatus, field.TypeString)
 	}
 	if value, ok := cwru.mutation.StartTime(); ok {
 		_spec.SetField(ciworkflowresult.FieldStartTime, field.TypeInt64, value)
@@ -358,6 +508,60 @@ func (cwru *CIWorkflowResultUpdate) sqlSave(ctx context.Context) (n int, err err
 	}
 	if cwru.mutation.EndTimeCleared() {
 		_spec.ClearField(ciworkflowresult.FieldEndTime, field.TypeInt64)
+	}
+	if value, ok := cwru.mutation.PythonVersion(); ok {
+		_spec.SetField(ciworkflowresult.FieldPythonVersion, field.TypeString, value)
+	}
+	if cwru.mutation.PythonVersionCleared() {
+		_spec.ClearField(ciworkflowresult.FieldPythonVersion, field.TypeString)
+	}
+	if value, ok := cwru.mutation.PytorchVersion(); ok {
+		_spec.SetField(ciworkflowresult.FieldPytorchVersion, field.TypeString, value)
+	}
+	if cwru.mutation.PytorchVersionCleared() {
+		_spec.ClearField(ciworkflowresult.FieldPytorchVersion, field.TypeString)
+	}
+	if value, ok := cwru.mutation.CudaVersion(); ok {
+		_spec.SetField(ciworkflowresult.FieldCudaVersion, field.TypeString, value)
+	}
+	if cwru.mutation.CudaVersionCleared() {
+		_spec.ClearField(ciworkflowresult.FieldCudaVersion, field.TypeString)
+	}
+	if value, ok := cwru.mutation.ComfyRunFlags(); ok {
+		_spec.SetField(ciworkflowresult.FieldComfyRunFlags, field.TypeString, value)
+	}
+	if cwru.mutation.ComfyRunFlagsCleared() {
+		_spec.ClearField(ciworkflowresult.FieldComfyRunFlags, field.TypeString)
+	}
+	if value, ok := cwru.mutation.AvgVram(); ok {
+		_spec.SetField(ciworkflowresult.FieldAvgVram, field.TypeInt, value)
+	}
+	if value, ok := cwru.mutation.AddedAvgVram(); ok {
+		_spec.AddField(ciworkflowresult.FieldAvgVram, field.TypeInt, value)
+	}
+	if cwru.mutation.AvgVramCleared() {
+		_spec.ClearField(ciworkflowresult.FieldAvgVram, field.TypeInt)
+	}
+	if value, ok := cwru.mutation.PeakVram(); ok {
+		_spec.SetField(ciworkflowresult.FieldPeakVram, field.TypeInt, value)
+	}
+	if value, ok := cwru.mutation.AddedPeakVram(); ok {
+		_spec.AddField(ciworkflowresult.FieldPeakVram, field.TypeInt, value)
+	}
+	if cwru.mutation.PeakVramCleared() {
+		_spec.ClearField(ciworkflowresult.FieldPeakVram, field.TypeInt)
+	}
+	if value, ok := cwru.mutation.JobTriggerUser(); ok {
+		_spec.SetField(ciworkflowresult.FieldJobTriggerUser, field.TypeString, value)
+	}
+	if cwru.mutation.JobTriggerUserCleared() {
+		_spec.ClearField(ciworkflowresult.FieldJobTriggerUser, field.TypeString)
+	}
+	if value, ok := cwru.mutation.Metadata(); ok {
+		_spec.SetField(ciworkflowresult.FieldMetadata, field.TypeJSON, value)
+	}
+	if cwru.mutation.MetadataCleared() {
+		_spec.ClearField(ciworkflowresult.FieldMetadata, field.TypeJSON)
 	}
 	if cwru.mutation.GitcommitCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -390,7 +594,7 @@ func (cwru *CIWorkflowResultUpdate) sqlSave(ctx context.Context) (n int, err err
 	}
 	if cwru.mutation.StorageFileCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   ciworkflowresult.StorageFileTable,
 			Columns: []string{ciworkflowresult.StorageFileColumn},
@@ -401,9 +605,25 @@ func (cwru *CIWorkflowResultUpdate) sqlSave(ctx context.Context) (n int, err err
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
+	if nodes := cwru.mutation.RemovedStorageFileIDs(); len(nodes) > 0 && !cwru.mutation.StorageFileCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   ciworkflowresult.StorageFileTable,
+			Columns: []string{ciworkflowresult.StorageFileColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(storagefile.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
 	if nodes := cwru.mutation.StorageFileIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   ciworkflowresult.StorageFileTable,
 			Columns: []string{ciworkflowresult.StorageFileColumn},
@@ -417,6 +637,7 @@ func (cwru *CIWorkflowResultUpdate) sqlSave(ctx context.Context) (n int, err err
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.AddModifiers(cwru.modifiers...)
 	if n, err = sqlgraph.UpdateNodes(ctx, cwru.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{ciworkflowresult.Label}
@@ -432,9 +653,10 @@ func (cwru *CIWorkflowResultUpdate) sqlSave(ctx context.Context) (n int, err err
 // CIWorkflowResultUpdateOne is the builder for updating a single CIWorkflowResult entity.
 type CIWorkflowResultUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *CIWorkflowResultMutation
+	fields    []string
+	hooks     []Hook
+	mutation  *CIWorkflowResultMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // SetUpdateTime sets the "update_time" field.
@@ -454,46 +676,6 @@ func (cwruo *CIWorkflowResultUpdateOne) SetNillableOperatingSystem(s *string) *C
 	if s != nil {
 		cwruo.SetOperatingSystem(*s)
 	}
-	return cwruo
-}
-
-// SetGpuType sets the "gpu_type" field.
-func (cwruo *CIWorkflowResultUpdateOne) SetGpuType(s string) *CIWorkflowResultUpdateOne {
-	cwruo.mutation.SetGpuType(s)
-	return cwruo
-}
-
-// SetNillableGpuType sets the "gpu_type" field if the given value is not nil.
-func (cwruo *CIWorkflowResultUpdateOne) SetNillableGpuType(s *string) *CIWorkflowResultUpdateOne {
-	if s != nil {
-		cwruo.SetGpuType(*s)
-	}
-	return cwruo
-}
-
-// ClearGpuType clears the value of the "gpu_type" field.
-func (cwruo *CIWorkflowResultUpdateOne) ClearGpuType() *CIWorkflowResultUpdateOne {
-	cwruo.mutation.ClearGpuType()
-	return cwruo
-}
-
-// SetPytorchVersion sets the "pytorch_version" field.
-func (cwruo *CIWorkflowResultUpdateOne) SetPytorchVersion(s string) *CIWorkflowResultUpdateOne {
-	cwruo.mutation.SetPytorchVersion(s)
-	return cwruo
-}
-
-// SetNillablePytorchVersion sets the "pytorch_version" field if the given value is not nil.
-func (cwruo *CIWorkflowResultUpdateOne) SetNillablePytorchVersion(s *string) *CIWorkflowResultUpdateOne {
-	if s != nil {
-		cwruo.SetPytorchVersion(*s)
-	}
-	return cwruo
-}
-
-// ClearPytorchVersion clears the value of the "pytorch_version" field.
-func (cwruo *CIWorkflowResultUpdateOne) ClearPytorchVersion() *CIWorkflowResultUpdateOne {
-	cwruo.mutation.ClearPytorchVersion()
 	return cwruo
 }
 
@@ -537,23 +719,37 @@ func (cwruo *CIWorkflowResultUpdateOne) ClearRunID() *CIWorkflowResultUpdateOne 
 	return cwruo
 }
 
-// SetStatus sets the "status" field.
-func (cwruo *CIWorkflowResultUpdateOne) SetStatus(s string) *CIWorkflowResultUpdateOne {
-	cwruo.mutation.SetStatus(s)
+// SetJobID sets the "job_id" field.
+func (cwruo *CIWorkflowResultUpdateOne) SetJobID(s string) *CIWorkflowResultUpdateOne {
+	cwruo.mutation.SetJobID(s)
 	return cwruo
 }
 
-// SetNillableStatus sets the "status" field if the given value is not nil.
-func (cwruo *CIWorkflowResultUpdateOne) SetNillableStatus(s *string) *CIWorkflowResultUpdateOne {
+// SetNillableJobID sets the "job_id" field if the given value is not nil.
+func (cwruo *CIWorkflowResultUpdateOne) SetNillableJobID(s *string) *CIWorkflowResultUpdateOne {
 	if s != nil {
-		cwruo.SetStatus(*s)
+		cwruo.SetJobID(*s)
 	}
 	return cwruo
 }
 
-// ClearStatus clears the value of the "status" field.
-func (cwruo *CIWorkflowResultUpdateOne) ClearStatus() *CIWorkflowResultUpdateOne {
-	cwruo.mutation.ClearStatus()
+// ClearJobID clears the value of the "job_id" field.
+func (cwruo *CIWorkflowResultUpdateOne) ClearJobID() *CIWorkflowResultUpdateOne {
+	cwruo.mutation.ClearJobID()
+	return cwruo
+}
+
+// SetStatus sets the "status" field.
+func (cwruo *CIWorkflowResultUpdateOne) SetStatus(srst schema.WorkflowRunStatusType) *CIWorkflowResultUpdateOne {
+	cwruo.mutation.SetStatus(srst)
+	return cwruo
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (cwruo *CIWorkflowResultUpdateOne) SetNillableStatus(srst *schema.WorkflowRunStatusType) *CIWorkflowResultUpdateOne {
+	if srst != nil {
+		cwruo.SetStatus(*srst)
+	}
 	return cwruo
 }
 
@@ -611,6 +807,172 @@ func (cwruo *CIWorkflowResultUpdateOne) ClearEndTime() *CIWorkflowResultUpdateOn
 	return cwruo
 }
 
+// SetPythonVersion sets the "python_version" field.
+func (cwruo *CIWorkflowResultUpdateOne) SetPythonVersion(s string) *CIWorkflowResultUpdateOne {
+	cwruo.mutation.SetPythonVersion(s)
+	return cwruo
+}
+
+// SetNillablePythonVersion sets the "python_version" field if the given value is not nil.
+func (cwruo *CIWorkflowResultUpdateOne) SetNillablePythonVersion(s *string) *CIWorkflowResultUpdateOne {
+	if s != nil {
+		cwruo.SetPythonVersion(*s)
+	}
+	return cwruo
+}
+
+// ClearPythonVersion clears the value of the "python_version" field.
+func (cwruo *CIWorkflowResultUpdateOne) ClearPythonVersion() *CIWorkflowResultUpdateOne {
+	cwruo.mutation.ClearPythonVersion()
+	return cwruo
+}
+
+// SetPytorchVersion sets the "pytorch_version" field.
+func (cwruo *CIWorkflowResultUpdateOne) SetPytorchVersion(s string) *CIWorkflowResultUpdateOne {
+	cwruo.mutation.SetPytorchVersion(s)
+	return cwruo
+}
+
+// SetNillablePytorchVersion sets the "pytorch_version" field if the given value is not nil.
+func (cwruo *CIWorkflowResultUpdateOne) SetNillablePytorchVersion(s *string) *CIWorkflowResultUpdateOne {
+	if s != nil {
+		cwruo.SetPytorchVersion(*s)
+	}
+	return cwruo
+}
+
+// ClearPytorchVersion clears the value of the "pytorch_version" field.
+func (cwruo *CIWorkflowResultUpdateOne) ClearPytorchVersion() *CIWorkflowResultUpdateOne {
+	cwruo.mutation.ClearPytorchVersion()
+	return cwruo
+}
+
+// SetCudaVersion sets the "cuda_version" field.
+func (cwruo *CIWorkflowResultUpdateOne) SetCudaVersion(s string) *CIWorkflowResultUpdateOne {
+	cwruo.mutation.SetCudaVersion(s)
+	return cwruo
+}
+
+// SetNillableCudaVersion sets the "cuda_version" field if the given value is not nil.
+func (cwruo *CIWorkflowResultUpdateOne) SetNillableCudaVersion(s *string) *CIWorkflowResultUpdateOne {
+	if s != nil {
+		cwruo.SetCudaVersion(*s)
+	}
+	return cwruo
+}
+
+// ClearCudaVersion clears the value of the "cuda_version" field.
+func (cwruo *CIWorkflowResultUpdateOne) ClearCudaVersion() *CIWorkflowResultUpdateOne {
+	cwruo.mutation.ClearCudaVersion()
+	return cwruo
+}
+
+// SetComfyRunFlags sets the "comfy_run_flags" field.
+func (cwruo *CIWorkflowResultUpdateOne) SetComfyRunFlags(s string) *CIWorkflowResultUpdateOne {
+	cwruo.mutation.SetComfyRunFlags(s)
+	return cwruo
+}
+
+// SetNillableComfyRunFlags sets the "comfy_run_flags" field if the given value is not nil.
+func (cwruo *CIWorkflowResultUpdateOne) SetNillableComfyRunFlags(s *string) *CIWorkflowResultUpdateOne {
+	if s != nil {
+		cwruo.SetComfyRunFlags(*s)
+	}
+	return cwruo
+}
+
+// ClearComfyRunFlags clears the value of the "comfy_run_flags" field.
+func (cwruo *CIWorkflowResultUpdateOne) ClearComfyRunFlags() *CIWorkflowResultUpdateOne {
+	cwruo.mutation.ClearComfyRunFlags()
+	return cwruo
+}
+
+// SetAvgVram sets the "avg_vram" field.
+func (cwruo *CIWorkflowResultUpdateOne) SetAvgVram(i int) *CIWorkflowResultUpdateOne {
+	cwruo.mutation.ResetAvgVram()
+	cwruo.mutation.SetAvgVram(i)
+	return cwruo
+}
+
+// SetNillableAvgVram sets the "avg_vram" field if the given value is not nil.
+func (cwruo *CIWorkflowResultUpdateOne) SetNillableAvgVram(i *int) *CIWorkflowResultUpdateOne {
+	if i != nil {
+		cwruo.SetAvgVram(*i)
+	}
+	return cwruo
+}
+
+// AddAvgVram adds i to the "avg_vram" field.
+func (cwruo *CIWorkflowResultUpdateOne) AddAvgVram(i int) *CIWorkflowResultUpdateOne {
+	cwruo.mutation.AddAvgVram(i)
+	return cwruo
+}
+
+// ClearAvgVram clears the value of the "avg_vram" field.
+func (cwruo *CIWorkflowResultUpdateOne) ClearAvgVram() *CIWorkflowResultUpdateOne {
+	cwruo.mutation.ClearAvgVram()
+	return cwruo
+}
+
+// SetPeakVram sets the "peak_vram" field.
+func (cwruo *CIWorkflowResultUpdateOne) SetPeakVram(i int) *CIWorkflowResultUpdateOne {
+	cwruo.mutation.ResetPeakVram()
+	cwruo.mutation.SetPeakVram(i)
+	return cwruo
+}
+
+// SetNillablePeakVram sets the "peak_vram" field if the given value is not nil.
+func (cwruo *CIWorkflowResultUpdateOne) SetNillablePeakVram(i *int) *CIWorkflowResultUpdateOne {
+	if i != nil {
+		cwruo.SetPeakVram(*i)
+	}
+	return cwruo
+}
+
+// AddPeakVram adds i to the "peak_vram" field.
+func (cwruo *CIWorkflowResultUpdateOne) AddPeakVram(i int) *CIWorkflowResultUpdateOne {
+	cwruo.mutation.AddPeakVram(i)
+	return cwruo
+}
+
+// ClearPeakVram clears the value of the "peak_vram" field.
+func (cwruo *CIWorkflowResultUpdateOne) ClearPeakVram() *CIWorkflowResultUpdateOne {
+	cwruo.mutation.ClearPeakVram()
+	return cwruo
+}
+
+// SetJobTriggerUser sets the "job_trigger_user" field.
+func (cwruo *CIWorkflowResultUpdateOne) SetJobTriggerUser(s string) *CIWorkflowResultUpdateOne {
+	cwruo.mutation.SetJobTriggerUser(s)
+	return cwruo
+}
+
+// SetNillableJobTriggerUser sets the "job_trigger_user" field if the given value is not nil.
+func (cwruo *CIWorkflowResultUpdateOne) SetNillableJobTriggerUser(s *string) *CIWorkflowResultUpdateOne {
+	if s != nil {
+		cwruo.SetJobTriggerUser(*s)
+	}
+	return cwruo
+}
+
+// ClearJobTriggerUser clears the value of the "job_trigger_user" field.
+func (cwruo *CIWorkflowResultUpdateOne) ClearJobTriggerUser() *CIWorkflowResultUpdateOne {
+	cwruo.mutation.ClearJobTriggerUser()
+	return cwruo
+}
+
+// SetMetadata sets the "metadata" field.
+func (cwruo *CIWorkflowResultUpdateOne) SetMetadata(m map[string]interface{}) *CIWorkflowResultUpdateOne {
+	cwruo.mutation.SetMetadata(m)
+	return cwruo
+}
+
+// ClearMetadata clears the value of the "metadata" field.
+func (cwruo *CIWorkflowResultUpdateOne) ClearMetadata() *CIWorkflowResultUpdateOne {
+	cwruo.mutation.ClearMetadata()
+	return cwruo
+}
+
 // SetGitcommitID sets the "gitcommit" edge to the GitCommit entity by ID.
 func (cwruo *CIWorkflowResultUpdateOne) SetGitcommitID(id uuid.UUID) *CIWorkflowResultUpdateOne {
 	cwruo.mutation.SetGitcommitID(id)
@@ -630,23 +992,19 @@ func (cwruo *CIWorkflowResultUpdateOne) SetGitcommit(g *GitCommit) *CIWorkflowRe
 	return cwruo.SetGitcommitID(g.ID)
 }
 
-// SetStorageFileID sets the "storage_file" edge to the StorageFile entity by ID.
-func (cwruo *CIWorkflowResultUpdateOne) SetStorageFileID(id uuid.UUID) *CIWorkflowResultUpdateOne {
-	cwruo.mutation.SetStorageFileID(id)
+// AddStorageFileIDs adds the "storage_file" edge to the StorageFile entity by IDs.
+func (cwruo *CIWorkflowResultUpdateOne) AddStorageFileIDs(ids ...uuid.UUID) *CIWorkflowResultUpdateOne {
+	cwruo.mutation.AddStorageFileIDs(ids...)
 	return cwruo
 }
 
-// SetNillableStorageFileID sets the "storage_file" edge to the StorageFile entity by ID if the given value is not nil.
-func (cwruo *CIWorkflowResultUpdateOne) SetNillableStorageFileID(id *uuid.UUID) *CIWorkflowResultUpdateOne {
-	if id != nil {
-		cwruo = cwruo.SetStorageFileID(*id)
+// AddStorageFile adds the "storage_file" edges to the StorageFile entity.
+func (cwruo *CIWorkflowResultUpdateOne) AddStorageFile(s ...*StorageFile) *CIWorkflowResultUpdateOne {
+	ids := make([]uuid.UUID, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
 	}
-	return cwruo
-}
-
-// SetStorageFile sets the "storage_file" edge to the StorageFile entity.
-func (cwruo *CIWorkflowResultUpdateOne) SetStorageFile(s *StorageFile) *CIWorkflowResultUpdateOne {
-	return cwruo.SetStorageFileID(s.ID)
+	return cwruo.AddStorageFileIDs(ids...)
 }
 
 // Mutation returns the CIWorkflowResultMutation object of the builder.
@@ -660,10 +1018,25 @@ func (cwruo *CIWorkflowResultUpdateOne) ClearGitcommit() *CIWorkflowResultUpdate
 	return cwruo
 }
 
-// ClearStorageFile clears the "storage_file" edge to the StorageFile entity.
+// ClearStorageFile clears all "storage_file" edges to the StorageFile entity.
 func (cwruo *CIWorkflowResultUpdateOne) ClearStorageFile() *CIWorkflowResultUpdateOne {
 	cwruo.mutation.ClearStorageFile()
 	return cwruo
+}
+
+// RemoveStorageFileIDs removes the "storage_file" edge to StorageFile entities by IDs.
+func (cwruo *CIWorkflowResultUpdateOne) RemoveStorageFileIDs(ids ...uuid.UUID) *CIWorkflowResultUpdateOne {
+	cwruo.mutation.RemoveStorageFileIDs(ids...)
+	return cwruo
+}
+
+// RemoveStorageFile removes "storage_file" edges to StorageFile entities.
+func (cwruo *CIWorkflowResultUpdateOne) RemoveStorageFile(s ...*StorageFile) *CIWorkflowResultUpdateOne {
+	ids := make([]uuid.UUID, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return cwruo.RemoveStorageFileIDs(ids...)
 }
 
 // Where appends a list predicates to the CIWorkflowResultUpdate builder.
@@ -715,6 +1088,12 @@ func (cwruo *CIWorkflowResultUpdateOne) defaults() {
 	}
 }
 
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (cwruo *CIWorkflowResultUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *CIWorkflowResultUpdateOne {
+	cwruo.modifiers = append(cwruo.modifiers, modifiers...)
+	return cwruo
+}
+
 func (cwruo *CIWorkflowResultUpdateOne) sqlSave(ctx context.Context) (_node *CIWorkflowResult, err error) {
 	_spec := sqlgraph.NewUpdateSpec(ciworkflowresult.Table, ciworkflowresult.Columns, sqlgraph.NewFieldSpec(ciworkflowresult.FieldID, field.TypeUUID))
 	id, ok := cwruo.mutation.ID()
@@ -747,18 +1126,6 @@ func (cwruo *CIWorkflowResultUpdateOne) sqlSave(ctx context.Context) (_node *CIW
 	if value, ok := cwruo.mutation.OperatingSystem(); ok {
 		_spec.SetField(ciworkflowresult.FieldOperatingSystem, field.TypeString, value)
 	}
-	if value, ok := cwruo.mutation.GpuType(); ok {
-		_spec.SetField(ciworkflowresult.FieldGpuType, field.TypeString, value)
-	}
-	if cwruo.mutation.GpuTypeCleared() {
-		_spec.ClearField(ciworkflowresult.FieldGpuType, field.TypeString)
-	}
-	if value, ok := cwruo.mutation.PytorchVersion(); ok {
-		_spec.SetField(ciworkflowresult.FieldPytorchVersion, field.TypeString, value)
-	}
-	if cwruo.mutation.PytorchVersionCleared() {
-		_spec.ClearField(ciworkflowresult.FieldPytorchVersion, field.TypeString)
-	}
 	if value, ok := cwruo.mutation.WorkflowName(); ok {
 		_spec.SetField(ciworkflowresult.FieldWorkflowName, field.TypeString, value)
 	}
@@ -771,11 +1138,14 @@ func (cwruo *CIWorkflowResultUpdateOne) sqlSave(ctx context.Context) (_node *CIW
 	if cwruo.mutation.RunIDCleared() {
 		_spec.ClearField(ciworkflowresult.FieldRunID, field.TypeString)
 	}
+	if value, ok := cwruo.mutation.JobID(); ok {
+		_spec.SetField(ciworkflowresult.FieldJobID, field.TypeString, value)
+	}
+	if cwruo.mutation.JobIDCleared() {
+		_spec.ClearField(ciworkflowresult.FieldJobID, field.TypeString)
+	}
 	if value, ok := cwruo.mutation.Status(); ok {
 		_spec.SetField(ciworkflowresult.FieldStatus, field.TypeString, value)
-	}
-	if cwruo.mutation.StatusCleared() {
-		_spec.ClearField(ciworkflowresult.FieldStatus, field.TypeString)
 	}
 	if value, ok := cwruo.mutation.StartTime(); ok {
 		_spec.SetField(ciworkflowresult.FieldStartTime, field.TypeInt64, value)
@@ -794,6 +1164,60 @@ func (cwruo *CIWorkflowResultUpdateOne) sqlSave(ctx context.Context) (_node *CIW
 	}
 	if cwruo.mutation.EndTimeCleared() {
 		_spec.ClearField(ciworkflowresult.FieldEndTime, field.TypeInt64)
+	}
+	if value, ok := cwruo.mutation.PythonVersion(); ok {
+		_spec.SetField(ciworkflowresult.FieldPythonVersion, field.TypeString, value)
+	}
+	if cwruo.mutation.PythonVersionCleared() {
+		_spec.ClearField(ciworkflowresult.FieldPythonVersion, field.TypeString)
+	}
+	if value, ok := cwruo.mutation.PytorchVersion(); ok {
+		_spec.SetField(ciworkflowresult.FieldPytorchVersion, field.TypeString, value)
+	}
+	if cwruo.mutation.PytorchVersionCleared() {
+		_spec.ClearField(ciworkflowresult.FieldPytorchVersion, field.TypeString)
+	}
+	if value, ok := cwruo.mutation.CudaVersion(); ok {
+		_spec.SetField(ciworkflowresult.FieldCudaVersion, field.TypeString, value)
+	}
+	if cwruo.mutation.CudaVersionCleared() {
+		_spec.ClearField(ciworkflowresult.FieldCudaVersion, field.TypeString)
+	}
+	if value, ok := cwruo.mutation.ComfyRunFlags(); ok {
+		_spec.SetField(ciworkflowresult.FieldComfyRunFlags, field.TypeString, value)
+	}
+	if cwruo.mutation.ComfyRunFlagsCleared() {
+		_spec.ClearField(ciworkflowresult.FieldComfyRunFlags, field.TypeString)
+	}
+	if value, ok := cwruo.mutation.AvgVram(); ok {
+		_spec.SetField(ciworkflowresult.FieldAvgVram, field.TypeInt, value)
+	}
+	if value, ok := cwruo.mutation.AddedAvgVram(); ok {
+		_spec.AddField(ciworkflowresult.FieldAvgVram, field.TypeInt, value)
+	}
+	if cwruo.mutation.AvgVramCleared() {
+		_spec.ClearField(ciworkflowresult.FieldAvgVram, field.TypeInt)
+	}
+	if value, ok := cwruo.mutation.PeakVram(); ok {
+		_spec.SetField(ciworkflowresult.FieldPeakVram, field.TypeInt, value)
+	}
+	if value, ok := cwruo.mutation.AddedPeakVram(); ok {
+		_spec.AddField(ciworkflowresult.FieldPeakVram, field.TypeInt, value)
+	}
+	if cwruo.mutation.PeakVramCleared() {
+		_spec.ClearField(ciworkflowresult.FieldPeakVram, field.TypeInt)
+	}
+	if value, ok := cwruo.mutation.JobTriggerUser(); ok {
+		_spec.SetField(ciworkflowresult.FieldJobTriggerUser, field.TypeString, value)
+	}
+	if cwruo.mutation.JobTriggerUserCleared() {
+		_spec.ClearField(ciworkflowresult.FieldJobTriggerUser, field.TypeString)
+	}
+	if value, ok := cwruo.mutation.Metadata(); ok {
+		_spec.SetField(ciworkflowresult.FieldMetadata, field.TypeJSON, value)
+	}
+	if cwruo.mutation.MetadataCleared() {
+		_spec.ClearField(ciworkflowresult.FieldMetadata, field.TypeJSON)
 	}
 	if cwruo.mutation.GitcommitCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -826,7 +1250,7 @@ func (cwruo *CIWorkflowResultUpdateOne) sqlSave(ctx context.Context) (_node *CIW
 	}
 	if cwruo.mutation.StorageFileCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   ciworkflowresult.StorageFileTable,
 			Columns: []string{ciworkflowresult.StorageFileColumn},
@@ -837,9 +1261,25 @@ func (cwruo *CIWorkflowResultUpdateOne) sqlSave(ctx context.Context) (_node *CIW
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
+	if nodes := cwruo.mutation.RemovedStorageFileIDs(); len(nodes) > 0 && !cwruo.mutation.StorageFileCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   ciworkflowresult.StorageFileTable,
+			Columns: []string{ciworkflowresult.StorageFileColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(storagefile.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
 	if nodes := cwruo.mutation.StorageFileIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   ciworkflowresult.StorageFileTable,
 			Columns: []string{ciworkflowresult.StorageFileColumn},
@@ -853,6 +1293,7 @@ func (cwruo *CIWorkflowResultUpdateOne) sqlSave(ctx context.Context) (_node *CIW
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.AddModifiers(cwruo.modifiers...)
 	_node = &CIWorkflowResult{config: cwruo.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

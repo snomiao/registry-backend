@@ -7,9 +7,11 @@ import (
 	"errors"
 	"fmt"
 	"registry-backend/ent/node"
+	"registry-backend/ent/nodereview"
 	"registry-backend/ent/nodeversion"
 	"registry-backend/ent/predicate"
 	"registry-backend/ent/publisher"
+	"registry-backend/ent/schema"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
@@ -22,8 +24,9 @@ import (
 // NodeUpdate is the builder for updating Node entities.
 type NodeUpdate struct {
 	config
-	hooks    []Hook
-	mutation *NodeMutation
+	hooks     []Hook
+	mutation  *NodeMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // Where appends a list predicates to the NodeUpdate builder.
@@ -83,6 +86,26 @@ func (nu *NodeUpdate) SetNillableDescription(s *string) *NodeUpdate {
 // ClearDescription clears the value of the "description" field.
 func (nu *NodeUpdate) ClearDescription() *NodeUpdate {
 	nu.mutation.ClearDescription()
+	return nu
+}
+
+// SetCategory sets the "category" field.
+func (nu *NodeUpdate) SetCategory(s string) *NodeUpdate {
+	nu.mutation.SetCategory(s)
+	return nu
+}
+
+// SetNillableCategory sets the "category" field if the given value is not nil.
+func (nu *NodeUpdate) SetNillableCategory(s *string) *NodeUpdate {
+	if s != nil {
+		nu.SetCategory(*s)
+	}
+	return nu
+}
+
+// ClearCategory clears the value of the "category" field.
+func (nu *NodeUpdate) ClearCategory() *NodeUpdate {
+	nu.mutation.ClearCategory()
 	return nu
 }
 
@@ -166,6 +189,103 @@ func (nu *NodeUpdate) AppendTags(s []string) *NodeUpdate {
 	return nu
 }
 
+// SetTotalInstall sets the "total_install" field.
+func (nu *NodeUpdate) SetTotalInstall(i int64) *NodeUpdate {
+	nu.mutation.ResetTotalInstall()
+	nu.mutation.SetTotalInstall(i)
+	return nu
+}
+
+// SetNillableTotalInstall sets the "total_install" field if the given value is not nil.
+func (nu *NodeUpdate) SetNillableTotalInstall(i *int64) *NodeUpdate {
+	if i != nil {
+		nu.SetTotalInstall(*i)
+	}
+	return nu
+}
+
+// AddTotalInstall adds i to the "total_install" field.
+func (nu *NodeUpdate) AddTotalInstall(i int64) *NodeUpdate {
+	nu.mutation.AddTotalInstall(i)
+	return nu
+}
+
+// SetTotalStar sets the "total_star" field.
+func (nu *NodeUpdate) SetTotalStar(i int64) *NodeUpdate {
+	nu.mutation.ResetTotalStar()
+	nu.mutation.SetTotalStar(i)
+	return nu
+}
+
+// SetNillableTotalStar sets the "total_star" field if the given value is not nil.
+func (nu *NodeUpdate) SetNillableTotalStar(i *int64) *NodeUpdate {
+	if i != nil {
+		nu.SetTotalStar(*i)
+	}
+	return nu
+}
+
+// AddTotalStar adds i to the "total_star" field.
+func (nu *NodeUpdate) AddTotalStar(i int64) *NodeUpdate {
+	nu.mutation.AddTotalStar(i)
+	return nu
+}
+
+// SetTotalReview sets the "total_review" field.
+func (nu *NodeUpdate) SetTotalReview(i int64) *NodeUpdate {
+	nu.mutation.ResetTotalReview()
+	nu.mutation.SetTotalReview(i)
+	return nu
+}
+
+// SetNillableTotalReview sets the "total_review" field if the given value is not nil.
+func (nu *NodeUpdate) SetNillableTotalReview(i *int64) *NodeUpdate {
+	if i != nil {
+		nu.SetTotalReview(*i)
+	}
+	return nu
+}
+
+// AddTotalReview adds i to the "total_review" field.
+func (nu *NodeUpdate) AddTotalReview(i int64) *NodeUpdate {
+	nu.mutation.AddTotalReview(i)
+	return nu
+}
+
+// SetStatus sets the "status" field.
+func (nu *NodeUpdate) SetStatus(ss schema.NodeStatus) *NodeUpdate {
+	nu.mutation.SetStatus(ss)
+	return nu
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (nu *NodeUpdate) SetNillableStatus(ss *schema.NodeStatus) *NodeUpdate {
+	if ss != nil {
+		nu.SetStatus(*ss)
+	}
+	return nu
+}
+
+// SetStatusDetail sets the "status_detail" field.
+func (nu *NodeUpdate) SetStatusDetail(s string) *NodeUpdate {
+	nu.mutation.SetStatusDetail(s)
+	return nu
+}
+
+// SetNillableStatusDetail sets the "status_detail" field if the given value is not nil.
+func (nu *NodeUpdate) SetNillableStatusDetail(s *string) *NodeUpdate {
+	if s != nil {
+		nu.SetStatusDetail(*s)
+	}
+	return nu
+}
+
+// ClearStatusDetail clears the value of the "status_detail" field.
+func (nu *NodeUpdate) ClearStatusDetail() *NodeUpdate {
+	nu.mutation.ClearStatusDetail()
+	return nu
+}
+
 // SetPublisher sets the "publisher" edge to the Publisher entity.
 func (nu *NodeUpdate) SetPublisher(p *Publisher) *NodeUpdate {
 	return nu.SetPublisherID(p.ID)
@@ -184,6 +304,21 @@ func (nu *NodeUpdate) AddVersions(n ...*NodeVersion) *NodeUpdate {
 		ids[i] = n[i].ID
 	}
 	return nu.AddVersionIDs(ids...)
+}
+
+// AddReviewIDs adds the "reviews" edge to the NodeReview entity by IDs.
+func (nu *NodeUpdate) AddReviewIDs(ids ...uuid.UUID) *NodeUpdate {
+	nu.mutation.AddReviewIDs(ids...)
+	return nu
+}
+
+// AddReviews adds the "reviews" edges to the NodeReview entity.
+func (nu *NodeUpdate) AddReviews(n ...*NodeReview) *NodeUpdate {
+	ids := make([]uuid.UUID, len(n))
+	for i := range n {
+		ids[i] = n[i].ID
+	}
+	return nu.AddReviewIDs(ids...)
 }
 
 // Mutation returns the NodeMutation object of the builder.
@@ -216,6 +351,27 @@ func (nu *NodeUpdate) RemoveVersions(n ...*NodeVersion) *NodeUpdate {
 		ids[i] = n[i].ID
 	}
 	return nu.RemoveVersionIDs(ids...)
+}
+
+// ClearReviews clears all "reviews" edges to the NodeReview entity.
+func (nu *NodeUpdate) ClearReviews() *NodeUpdate {
+	nu.mutation.ClearReviews()
+	return nu
+}
+
+// RemoveReviewIDs removes the "reviews" edge to NodeReview entities by IDs.
+func (nu *NodeUpdate) RemoveReviewIDs(ids ...uuid.UUID) *NodeUpdate {
+	nu.mutation.RemoveReviewIDs(ids...)
+	return nu
+}
+
+// RemoveReviews removes "reviews" edges to NodeReview entities.
+func (nu *NodeUpdate) RemoveReviews(n ...*NodeReview) *NodeUpdate {
+	ids := make([]uuid.UUID, len(n))
+	for i := range n {
+		ids[i] = n[i].ID
+	}
+	return nu.RemoveReviewIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -256,10 +412,21 @@ func (nu *NodeUpdate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (nu *NodeUpdate) check() error {
+	if v, ok := nu.mutation.Status(); ok {
+		if err := node.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Node.status": %w`, err)}
+		}
+	}
 	if _, ok := nu.mutation.PublisherID(); nu.mutation.PublisherCleared() && !ok {
 		return errors.New(`ent: clearing a required unique edge "Node.publisher"`)
 	}
 	return nil
+}
+
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (nu *NodeUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *NodeUpdate {
+	nu.modifiers = append(nu.modifiers, modifiers...)
+	return nu
 }
 
 func (nu *NodeUpdate) sqlSave(ctx context.Context) (n int, err error) {
@@ -286,6 +453,12 @@ func (nu *NodeUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if nu.mutation.DescriptionCleared() {
 		_spec.ClearField(node.FieldDescription, field.TypeString)
 	}
+	if value, ok := nu.mutation.Category(); ok {
+		_spec.SetField(node.FieldCategory, field.TypeString, value)
+	}
+	if nu.mutation.CategoryCleared() {
+		_spec.ClearField(node.FieldCategory, field.TypeString)
+	}
 	if value, ok := nu.mutation.Author(); ok {
 		_spec.SetField(node.FieldAuthor, field.TypeString, value)
 	}
@@ -311,6 +484,33 @@ func (nu *NodeUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
 			sqljson.Append(u, node.FieldTags, value)
 		})
+	}
+	if value, ok := nu.mutation.TotalInstall(); ok {
+		_spec.SetField(node.FieldTotalInstall, field.TypeInt64, value)
+	}
+	if value, ok := nu.mutation.AddedTotalInstall(); ok {
+		_spec.AddField(node.FieldTotalInstall, field.TypeInt64, value)
+	}
+	if value, ok := nu.mutation.TotalStar(); ok {
+		_spec.SetField(node.FieldTotalStar, field.TypeInt64, value)
+	}
+	if value, ok := nu.mutation.AddedTotalStar(); ok {
+		_spec.AddField(node.FieldTotalStar, field.TypeInt64, value)
+	}
+	if value, ok := nu.mutation.TotalReview(); ok {
+		_spec.SetField(node.FieldTotalReview, field.TypeInt64, value)
+	}
+	if value, ok := nu.mutation.AddedTotalReview(); ok {
+		_spec.AddField(node.FieldTotalReview, field.TypeInt64, value)
+	}
+	if value, ok := nu.mutation.Status(); ok {
+		_spec.SetField(node.FieldStatus, field.TypeEnum, value)
+	}
+	if value, ok := nu.mutation.StatusDetail(); ok {
+		_spec.SetField(node.FieldStatusDetail, field.TypeString, value)
+	}
+	if nu.mutation.StatusDetailCleared() {
+		_spec.ClearField(node.FieldStatusDetail, field.TypeString)
 	}
 	if nu.mutation.PublisherCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -386,6 +586,52 @@ func (nu *NodeUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if nu.mutation.ReviewsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   node.ReviewsTable,
+			Columns: []string{node.ReviewsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(nodereview.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := nu.mutation.RemovedReviewsIDs(); len(nodes) > 0 && !nu.mutation.ReviewsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   node.ReviewsTable,
+			Columns: []string{node.ReviewsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(nodereview.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := nu.mutation.ReviewsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   node.ReviewsTable,
+			Columns: []string{node.ReviewsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(nodereview.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	_spec.AddModifiers(nu.modifiers...)
 	if n, err = sqlgraph.UpdateNodes(ctx, nu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{node.Label}
@@ -401,9 +647,10 @@ func (nu *NodeUpdate) sqlSave(ctx context.Context) (n int, err error) {
 // NodeUpdateOne is the builder for updating a single Node entity.
 type NodeUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *NodeMutation
+	fields    []string
+	hooks     []Hook
+	mutation  *NodeMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // SetUpdateTime sets the "update_time" field.
@@ -457,6 +704,26 @@ func (nuo *NodeUpdateOne) SetNillableDescription(s *string) *NodeUpdateOne {
 // ClearDescription clears the value of the "description" field.
 func (nuo *NodeUpdateOne) ClearDescription() *NodeUpdateOne {
 	nuo.mutation.ClearDescription()
+	return nuo
+}
+
+// SetCategory sets the "category" field.
+func (nuo *NodeUpdateOne) SetCategory(s string) *NodeUpdateOne {
+	nuo.mutation.SetCategory(s)
+	return nuo
+}
+
+// SetNillableCategory sets the "category" field if the given value is not nil.
+func (nuo *NodeUpdateOne) SetNillableCategory(s *string) *NodeUpdateOne {
+	if s != nil {
+		nuo.SetCategory(*s)
+	}
+	return nuo
+}
+
+// ClearCategory clears the value of the "category" field.
+func (nuo *NodeUpdateOne) ClearCategory() *NodeUpdateOne {
+	nuo.mutation.ClearCategory()
 	return nuo
 }
 
@@ -540,6 +807,103 @@ func (nuo *NodeUpdateOne) AppendTags(s []string) *NodeUpdateOne {
 	return nuo
 }
 
+// SetTotalInstall sets the "total_install" field.
+func (nuo *NodeUpdateOne) SetTotalInstall(i int64) *NodeUpdateOne {
+	nuo.mutation.ResetTotalInstall()
+	nuo.mutation.SetTotalInstall(i)
+	return nuo
+}
+
+// SetNillableTotalInstall sets the "total_install" field if the given value is not nil.
+func (nuo *NodeUpdateOne) SetNillableTotalInstall(i *int64) *NodeUpdateOne {
+	if i != nil {
+		nuo.SetTotalInstall(*i)
+	}
+	return nuo
+}
+
+// AddTotalInstall adds i to the "total_install" field.
+func (nuo *NodeUpdateOne) AddTotalInstall(i int64) *NodeUpdateOne {
+	nuo.mutation.AddTotalInstall(i)
+	return nuo
+}
+
+// SetTotalStar sets the "total_star" field.
+func (nuo *NodeUpdateOne) SetTotalStar(i int64) *NodeUpdateOne {
+	nuo.mutation.ResetTotalStar()
+	nuo.mutation.SetTotalStar(i)
+	return nuo
+}
+
+// SetNillableTotalStar sets the "total_star" field if the given value is not nil.
+func (nuo *NodeUpdateOne) SetNillableTotalStar(i *int64) *NodeUpdateOne {
+	if i != nil {
+		nuo.SetTotalStar(*i)
+	}
+	return nuo
+}
+
+// AddTotalStar adds i to the "total_star" field.
+func (nuo *NodeUpdateOne) AddTotalStar(i int64) *NodeUpdateOne {
+	nuo.mutation.AddTotalStar(i)
+	return nuo
+}
+
+// SetTotalReview sets the "total_review" field.
+func (nuo *NodeUpdateOne) SetTotalReview(i int64) *NodeUpdateOne {
+	nuo.mutation.ResetTotalReview()
+	nuo.mutation.SetTotalReview(i)
+	return nuo
+}
+
+// SetNillableTotalReview sets the "total_review" field if the given value is not nil.
+func (nuo *NodeUpdateOne) SetNillableTotalReview(i *int64) *NodeUpdateOne {
+	if i != nil {
+		nuo.SetTotalReview(*i)
+	}
+	return nuo
+}
+
+// AddTotalReview adds i to the "total_review" field.
+func (nuo *NodeUpdateOne) AddTotalReview(i int64) *NodeUpdateOne {
+	nuo.mutation.AddTotalReview(i)
+	return nuo
+}
+
+// SetStatus sets the "status" field.
+func (nuo *NodeUpdateOne) SetStatus(ss schema.NodeStatus) *NodeUpdateOne {
+	nuo.mutation.SetStatus(ss)
+	return nuo
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (nuo *NodeUpdateOne) SetNillableStatus(ss *schema.NodeStatus) *NodeUpdateOne {
+	if ss != nil {
+		nuo.SetStatus(*ss)
+	}
+	return nuo
+}
+
+// SetStatusDetail sets the "status_detail" field.
+func (nuo *NodeUpdateOne) SetStatusDetail(s string) *NodeUpdateOne {
+	nuo.mutation.SetStatusDetail(s)
+	return nuo
+}
+
+// SetNillableStatusDetail sets the "status_detail" field if the given value is not nil.
+func (nuo *NodeUpdateOne) SetNillableStatusDetail(s *string) *NodeUpdateOne {
+	if s != nil {
+		nuo.SetStatusDetail(*s)
+	}
+	return nuo
+}
+
+// ClearStatusDetail clears the value of the "status_detail" field.
+func (nuo *NodeUpdateOne) ClearStatusDetail() *NodeUpdateOne {
+	nuo.mutation.ClearStatusDetail()
+	return nuo
+}
+
 // SetPublisher sets the "publisher" edge to the Publisher entity.
 func (nuo *NodeUpdateOne) SetPublisher(p *Publisher) *NodeUpdateOne {
 	return nuo.SetPublisherID(p.ID)
@@ -558,6 +922,21 @@ func (nuo *NodeUpdateOne) AddVersions(n ...*NodeVersion) *NodeUpdateOne {
 		ids[i] = n[i].ID
 	}
 	return nuo.AddVersionIDs(ids...)
+}
+
+// AddReviewIDs adds the "reviews" edge to the NodeReview entity by IDs.
+func (nuo *NodeUpdateOne) AddReviewIDs(ids ...uuid.UUID) *NodeUpdateOne {
+	nuo.mutation.AddReviewIDs(ids...)
+	return nuo
+}
+
+// AddReviews adds the "reviews" edges to the NodeReview entity.
+func (nuo *NodeUpdateOne) AddReviews(n ...*NodeReview) *NodeUpdateOne {
+	ids := make([]uuid.UUID, len(n))
+	for i := range n {
+		ids[i] = n[i].ID
+	}
+	return nuo.AddReviewIDs(ids...)
 }
 
 // Mutation returns the NodeMutation object of the builder.
@@ -590,6 +969,27 @@ func (nuo *NodeUpdateOne) RemoveVersions(n ...*NodeVersion) *NodeUpdateOne {
 		ids[i] = n[i].ID
 	}
 	return nuo.RemoveVersionIDs(ids...)
+}
+
+// ClearReviews clears all "reviews" edges to the NodeReview entity.
+func (nuo *NodeUpdateOne) ClearReviews() *NodeUpdateOne {
+	nuo.mutation.ClearReviews()
+	return nuo
+}
+
+// RemoveReviewIDs removes the "reviews" edge to NodeReview entities by IDs.
+func (nuo *NodeUpdateOne) RemoveReviewIDs(ids ...uuid.UUID) *NodeUpdateOne {
+	nuo.mutation.RemoveReviewIDs(ids...)
+	return nuo
+}
+
+// RemoveReviews removes "reviews" edges to NodeReview entities.
+func (nuo *NodeUpdateOne) RemoveReviews(n ...*NodeReview) *NodeUpdateOne {
+	ids := make([]uuid.UUID, len(n))
+	for i := range n {
+		ids[i] = n[i].ID
+	}
+	return nuo.RemoveReviewIDs(ids...)
 }
 
 // Where appends a list predicates to the NodeUpdate builder.
@@ -643,10 +1043,21 @@ func (nuo *NodeUpdateOne) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (nuo *NodeUpdateOne) check() error {
+	if v, ok := nuo.mutation.Status(); ok {
+		if err := node.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Node.status": %w`, err)}
+		}
+	}
 	if _, ok := nuo.mutation.PublisherID(); nuo.mutation.PublisherCleared() && !ok {
 		return errors.New(`ent: clearing a required unique edge "Node.publisher"`)
 	}
 	return nil
+}
+
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (nuo *NodeUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *NodeUpdateOne {
+	nuo.modifiers = append(nuo.modifiers, modifiers...)
+	return nuo
 }
 
 func (nuo *NodeUpdateOne) sqlSave(ctx context.Context) (_node *Node, err error) {
@@ -690,6 +1101,12 @@ func (nuo *NodeUpdateOne) sqlSave(ctx context.Context) (_node *Node, err error) 
 	if nuo.mutation.DescriptionCleared() {
 		_spec.ClearField(node.FieldDescription, field.TypeString)
 	}
+	if value, ok := nuo.mutation.Category(); ok {
+		_spec.SetField(node.FieldCategory, field.TypeString, value)
+	}
+	if nuo.mutation.CategoryCleared() {
+		_spec.ClearField(node.FieldCategory, field.TypeString)
+	}
 	if value, ok := nuo.mutation.Author(); ok {
 		_spec.SetField(node.FieldAuthor, field.TypeString, value)
 	}
@@ -715,6 +1132,33 @@ func (nuo *NodeUpdateOne) sqlSave(ctx context.Context) (_node *Node, err error) 
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
 			sqljson.Append(u, node.FieldTags, value)
 		})
+	}
+	if value, ok := nuo.mutation.TotalInstall(); ok {
+		_spec.SetField(node.FieldTotalInstall, field.TypeInt64, value)
+	}
+	if value, ok := nuo.mutation.AddedTotalInstall(); ok {
+		_spec.AddField(node.FieldTotalInstall, field.TypeInt64, value)
+	}
+	if value, ok := nuo.mutation.TotalStar(); ok {
+		_spec.SetField(node.FieldTotalStar, field.TypeInt64, value)
+	}
+	if value, ok := nuo.mutation.AddedTotalStar(); ok {
+		_spec.AddField(node.FieldTotalStar, field.TypeInt64, value)
+	}
+	if value, ok := nuo.mutation.TotalReview(); ok {
+		_spec.SetField(node.FieldTotalReview, field.TypeInt64, value)
+	}
+	if value, ok := nuo.mutation.AddedTotalReview(); ok {
+		_spec.AddField(node.FieldTotalReview, field.TypeInt64, value)
+	}
+	if value, ok := nuo.mutation.Status(); ok {
+		_spec.SetField(node.FieldStatus, field.TypeEnum, value)
+	}
+	if value, ok := nuo.mutation.StatusDetail(); ok {
+		_spec.SetField(node.FieldStatusDetail, field.TypeString, value)
+	}
+	if nuo.mutation.StatusDetailCleared() {
+		_spec.ClearField(node.FieldStatusDetail, field.TypeString)
 	}
 	if nuo.mutation.PublisherCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -790,6 +1234,52 @@ func (nuo *NodeUpdateOne) sqlSave(ctx context.Context) (_node *Node, err error) 
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if nuo.mutation.ReviewsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   node.ReviewsTable,
+			Columns: []string{node.ReviewsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(nodereview.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := nuo.mutation.RemovedReviewsIDs(); len(nodes) > 0 && !nuo.mutation.ReviewsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   node.ReviewsTable,
+			Columns: []string{node.ReviewsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(nodereview.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := nuo.mutation.ReviewsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   node.ReviewsTable,
+			Columns: []string{node.ReviewsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(nodereview.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	_spec.AddModifiers(nuo.modifiers...)
 	_node = &Node{config: nuo.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

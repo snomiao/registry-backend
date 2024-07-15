@@ -1,10 +1,10 @@
 package mapper
 
 import (
-	"fmt"
 	"regexp"
 	"registry-backend/drip"
 	"registry-backend/ent"
+	"registry-backend/ent/schema"
 	"strings"
 )
 
@@ -26,6 +26,9 @@ func ApiCreateNodeToDb(publisherId string, node *drip.Node, client *ent.Client) 
 	}
 	if node.Name != nil {
 		newNode.SetName(*node.Name)
+	}
+	if node.Category != nil {
+		newNode.SetCategory(*node.Category)
 	}
 	if node.Tags != nil {
 		newNode.SetTags(*node.Tags)
@@ -57,6 +60,9 @@ func ApiUpdateNodeToUpdateFields(nodeID string, node *drip.Node, client *ent.Cli
 	if node.Tags != nil {
 		update.SetTags(*node.Tags)
 	}
+	if node.Category != nil {
+		update.SetCategory(*node.Category)
+	}
 	if node.Repository != nil {
 		update.SetRepositoryURL(*node.Repository)
 	}
@@ -70,25 +76,39 @@ func ApiUpdateNodeToUpdateFields(nodeID string, node *drip.Node, client *ent.Cli
 func ValidateNode(node *drip.Node) error {
 	if node.Id != nil {
 		if len(*node.Id) > 100 {
-			return fmt.Errorf("node id is too long")
+			return NewErrorBadRequest("node id is too long")
 		}
-		if !IsValidNodeID(*node.Id) {
-			return fmt.Errorf("invalid node id")
+		isValid, msg := IsValidNodeID(*node.Id)
+		if !isValid {
+			return NewErrorBadRequest(msg)
+		}
+	}
+	if node.Description != nil {
+		if len(*node.Description) > 1000 {
+			return NewErrorBadRequest("description is too long")
 		}
 	}
 	return nil
 }
 
-func IsValidNodeID(nodeID string) bool {
+func IsValidNodeID(nodeID string) (bool, string) {
 	if len(nodeID) == 0 || len(nodeID) > 50 {
-		return false
+		return false, "node id must be between 1 and 50 characters"
+	}
+	// Check if there are capital letters in the string
+	if strings.ToLower(nodeID) != nodeID {
+		return false, "Node ID can only contain lowercase letters"
 	}
 	// Regular expression pattern for Node ID validation (lowercase letters only)
 	pattern := `^[a-z][a-z0-9-_]+(\.[a-z0-9-_]+)*$`
 	// Compile the regular expression pattern
 	regex := regexp.MustCompile(pattern)
 	// Check if the string matches the pattern
-	return regex.MatchString(nodeID)
+	matches := regex.MatchString(nodeID)
+	if !matches {
+		return false, "Node ID can only contain lowercase letters, numbers, hyphens, underscores, and dots. Dots cannot be consecutive or be at the start or end of the id."
+	}
+	return true, ""
 }
 
 func DbNodeToApiNode(node *ent.Node) *drip.Node {
@@ -96,14 +116,42 @@ func DbNodeToApiNode(node *ent.Node) *drip.Node {
 		return nil
 	}
 
-	return &drip.Node{
-		Author:      &node.Author,
-		Description: &node.Description,
-		Id:          &node.ID,
-		License:     &node.License,
-		Name:        &node.Name,
-		Tags:        &node.Tags,
-		Repository:  &node.RepositoryURL,
-		Icon:        &node.IconURL,
+	downloads := int(node.TotalInstall)
+	rate := float32(0)
+	if node.TotalReview > 0 {
+		rate = float32(node.TotalStar) / float32(node.TotalReview)
 	}
+
+	return &drip.Node{
+		Author:       &node.Author,
+		Description:  &node.Description,
+		Category:     &node.Category,
+		Id:           &node.ID,
+		License:      &node.License,
+		Name:         &node.Name,
+		Tags:         &node.Tags,
+		Repository:   &node.RepositoryURL,
+		Icon:         &node.IconURL,
+		Downloads:    &downloads,
+		Rating:       &rate,
+		Status:       DbNodeStatusToApiNodeStatus(node.Status),
+		StatusDetail: &node.StatusDetail,
+	}
+}
+
+func DbNodeStatusToApiNodeStatus(status schema.NodeStatus) *drip.NodeStatus {
+	var nodeStatus drip.NodeStatus
+
+	switch status {
+	case schema.NodeStatusActive:
+		nodeStatus = drip.NodeStatusActive
+	case schema.NodeStatusBanned:
+		nodeStatus = drip.NodeStatusBanned
+	case schema.NodeStatusDeleted:
+		nodeStatus = drip.NodeStatusDeleted
+	default:
+		nodeStatus = ""
+	}
+
+	return &nodeStatus
 }

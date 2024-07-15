@@ -28,6 +28,9 @@ func (Node) Fields() []ent.Field {
 		field.String("description").Optional().SchemaType(map[string]string{
 			dialect.Postgres: "text",
 		}),
+		field.String("category").SchemaType(map[string]string{
+			dialect.Postgres: "text",
+		}).Optional(),
 		field.String("author").SchemaType(map[string]string{
 			dialect.Postgres: "text",
 		}).Optional(),
@@ -43,6 +46,15 @@ func (Node) Fields() []ent.Field {
 		field.Strings("tags").SchemaType(map[string]string{
 			dialect.Postgres: "text",
 		}).Default([]string{}),
+		field.Int64("total_install").Default(0),
+		field.Int64("total_star").Default(0),
+		field.Int64("total_review").Default(0),
+		field.Enum("status").
+			GoType(NodeStatus("")).
+			Default(string(NodeStatusActive)),
+		field.String("status_detail").SchemaType(map[string]string{
+			dialect.Postgres: "text",
+		}).Optional(),
 	}
 }
 
@@ -56,5 +68,22 @@ func (Node) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("publisher", Publisher.Type).Field("publisher_id").Ref("nodes").Required().Unique(),
 		edge.To("versions", NodeVersion.Type),
+		edge.To("reviews", NodeReview.Type),
+	}
+}
+
+type NodeStatus string
+
+const (
+	NodeStatusActive  NodeStatus = "active"
+	NodeStatusDeleted NodeStatus = "deleted"
+	NodeStatusBanned  NodeStatus = "banned"
+)
+
+func (NodeStatus) Values() (types []string) {
+	return []string{
+		string(NodeStatusActive),
+		string(NodeStatusBanned),
+		string(NodeStatusDeleted),
 	}
 }

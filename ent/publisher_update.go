@@ -11,6 +11,7 @@ import (
 	"registry-backend/ent/predicate"
 	"registry-backend/ent/publisher"
 	"registry-backend/ent/publisherpermission"
+	"registry-backend/ent/schema"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
@@ -22,8 +23,9 @@ import (
 // PublisherUpdate is the builder for updating Publisher entities.
 type PublisherUpdate struct {
 	config
-	hooks    []Hook
-	mutation *PublisherMutation
+	hooks     []Hook
+	mutation  *PublisherMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // Where appends a list predicates to the PublisherUpdate builder.
@@ -149,6 +151,20 @@ func (pu *PublisherUpdate) SetNillableLogoURL(s *string) *PublisherUpdate {
 // ClearLogoURL clears the value of the "logo_url" field.
 func (pu *PublisherUpdate) ClearLogoURL() *PublisherUpdate {
 	pu.mutation.ClearLogoURL()
+	return pu
+}
+
+// SetStatus sets the "status" field.
+func (pu *PublisherUpdate) SetStatus(sst schema.PublisherStatusType) *PublisherUpdate {
+	pu.mutation.SetStatus(sst)
+	return pu
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (pu *PublisherUpdate) SetNillableStatus(sst *schema.PublisherStatusType) *PublisherUpdate {
+	if sst != nil {
+		pu.SetStatus(*sst)
+	}
 	return pu
 }
 
@@ -301,7 +317,26 @@ func (pu *PublisherUpdate) defaults() {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (pu *PublisherUpdate) check() error {
+	if v, ok := pu.mutation.Status(); ok {
+		if err := publisher.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Publisher.status": %w`, err)}
+		}
+	}
+	return nil
+}
+
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (pu *PublisherUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *PublisherUpdate {
+	pu.modifiers = append(pu.modifiers, modifiers...)
+	return pu
+}
+
 func (pu *PublisherUpdate) sqlSave(ctx context.Context) (n int, err error) {
+	if err := pu.check(); err != nil {
+		return n, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(publisher.Table, publisher.Columns, sqlgraph.NewFieldSpec(publisher.FieldID, field.TypeString))
 	if ps := pu.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -345,6 +380,9 @@ func (pu *PublisherUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if pu.mutation.LogoURLCleared() {
 		_spec.ClearField(publisher.FieldLogoURL, field.TypeString)
+	}
+	if value, ok := pu.mutation.Status(); ok {
+		_spec.SetField(publisher.FieldStatus, field.TypeEnum, value)
 	}
 	if pu.mutation.PublisherPermissionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -481,6 +519,7 @@ func (pu *PublisherUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.AddModifiers(pu.modifiers...)
 	if n, err = sqlgraph.UpdateNodes(ctx, pu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{publisher.Label}
@@ -496,9 +535,10 @@ func (pu *PublisherUpdate) sqlSave(ctx context.Context) (n int, err error) {
 // PublisherUpdateOne is the builder for updating a single Publisher entity.
 type PublisherUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *PublisherMutation
+	fields    []string
+	hooks     []Hook
+	mutation  *PublisherMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // SetUpdateTime sets the "update_time" field.
@@ -618,6 +658,20 @@ func (puo *PublisherUpdateOne) SetNillableLogoURL(s *string) *PublisherUpdateOne
 // ClearLogoURL clears the value of the "logo_url" field.
 func (puo *PublisherUpdateOne) ClearLogoURL() *PublisherUpdateOne {
 	puo.mutation.ClearLogoURL()
+	return puo
+}
+
+// SetStatus sets the "status" field.
+func (puo *PublisherUpdateOne) SetStatus(sst schema.PublisherStatusType) *PublisherUpdateOne {
+	puo.mutation.SetStatus(sst)
+	return puo
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (puo *PublisherUpdateOne) SetNillableStatus(sst *schema.PublisherStatusType) *PublisherUpdateOne {
+	if sst != nil {
+		puo.SetStatus(*sst)
+	}
 	return puo
 }
 
@@ -783,7 +837,26 @@ func (puo *PublisherUpdateOne) defaults() {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (puo *PublisherUpdateOne) check() error {
+	if v, ok := puo.mutation.Status(); ok {
+		if err := publisher.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Publisher.status": %w`, err)}
+		}
+	}
+	return nil
+}
+
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (puo *PublisherUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *PublisherUpdateOne {
+	puo.modifiers = append(puo.modifiers, modifiers...)
+	return puo
+}
+
 func (puo *PublisherUpdateOne) sqlSave(ctx context.Context) (_node *Publisher, err error) {
+	if err := puo.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(publisher.Table, publisher.Columns, sqlgraph.NewFieldSpec(publisher.FieldID, field.TypeString))
 	id, ok := puo.mutation.ID()
 	if !ok {
@@ -844,6 +917,9 @@ func (puo *PublisherUpdateOne) sqlSave(ctx context.Context) (_node *Publisher, e
 	}
 	if puo.mutation.LogoURLCleared() {
 		_spec.ClearField(publisher.FieldLogoURL, field.TypeString)
+	}
+	if value, ok := puo.mutation.Status(); ok {
+		_spec.SetField(publisher.FieldStatus, field.TypeEnum, value)
 	}
 	if puo.mutation.PublisherPermissionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -980,6 +1056,7 @@ func (puo *PublisherUpdateOne) sqlSave(ctx context.Context) (_node *Publisher, e
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.AddModifiers(puo.modifiers...)
 	_node = &Publisher{config: puo.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

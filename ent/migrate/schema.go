@@ -14,14 +14,20 @@ var (
 		{Name: "create_time", Type: field.TypeTime},
 		{Name: "update_time", Type: field.TypeTime},
 		{Name: "operating_system", Type: field.TypeString, SchemaType: map[string]string{"postgres": "text"}},
-		{Name: "gpu_type", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"postgres": "text"}},
-		{Name: "pytorch_version", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"postgres": "text"}},
 		{Name: "workflow_name", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"postgres": "text"}},
 		{Name: "run_id", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"postgres": "text"}},
-		{Name: "status", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"postgres": "text"}},
+		{Name: "job_id", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"postgres": "text"}},
+		{Name: "status", Type: field.TypeString, Default: "STARTED"},
 		{Name: "start_time", Type: field.TypeInt64, Nullable: true},
 		{Name: "end_time", Type: field.TypeInt64, Nullable: true},
-		{Name: "ci_workflow_result_storage_file", Type: field.TypeUUID, Nullable: true},
+		{Name: "python_version", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"postgres": "text"}},
+		{Name: "pytorch_version", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"postgres": "text"}},
+		{Name: "cuda_version", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"postgres": "text"}},
+		{Name: "comfy_run_flags", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"postgres": "text"}},
+		{Name: "avg_vram", Type: field.TypeInt, Nullable: true},
+		{Name: "peak_vram", Type: field.TypeInt, Nullable: true},
+		{Name: "job_trigger_user", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"postgres": "text"}},
+		{Name: "metadata", Type: field.TypeJSON, Nullable: true, SchemaType: map[string]string{"postgres": "jsonb"}},
 		{Name: "git_commit_results", Type: field.TypeUUID, Nullable: true},
 	}
 	// CiWorkflowResultsTable holds the schema information for the "ci_workflow_results" table.
@@ -31,14 +37,8 @@ var (
 		PrimaryKey: []*schema.Column{CiWorkflowResultsColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:     "ci_workflow_results_storage_files_storage_file",
-				Columns:    []*schema.Column{CiWorkflowResultsColumns[11]},
-				RefColumns: []*schema.Column{StorageFilesColumns[0]},
-				OnDelete:   schema.SetNull,
-			},
-			{
 				Symbol:     "ci_workflow_results_git_commits_results",
-				Columns:    []*schema.Column{CiWorkflowResultsColumns[12]},
+				Columns:    []*schema.Column{CiWorkflowResultsColumns[18]},
 				RefColumns: []*schema.Column{GitCommitsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -56,6 +56,7 @@ var (
 		{Name: "commit_timestamp", Type: field.TypeTime},
 		{Name: "author", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"postgres": "text"}},
 		{Name: "timestamp", Type: field.TypeTime, Nullable: true},
+		{Name: "pr_number", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"postgres": "text"}},
 	}
 	// GitCommitsTable holds the schema information for the "git_commits" table.
 	GitCommitsTable = &schema.Table{
@@ -77,11 +78,17 @@ var (
 		{Name: "update_time", Type: field.TypeTime},
 		{Name: "name", Type: field.TypeString, SchemaType: map[string]string{"postgres": "text"}},
 		{Name: "description", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"postgres": "text"}},
+		{Name: "category", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"postgres": "text"}},
 		{Name: "author", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"postgres": "text"}},
 		{Name: "license", Type: field.TypeString, SchemaType: map[string]string{"postgres": "text"}},
 		{Name: "repository_url", Type: field.TypeString, SchemaType: map[string]string{"postgres": "text"}},
 		{Name: "icon_url", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"postgres": "text"}},
 		{Name: "tags", Type: field.TypeJSON, SchemaType: map[string]string{"postgres": "text"}},
+		{Name: "total_install", Type: field.TypeInt64, Default: 0},
+		{Name: "total_star", Type: field.TypeInt64, Default: 0},
+		{Name: "total_review", Type: field.TypeInt64, Default: 0},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "banned", "deleted"}, Default: "active"},
+		{Name: "status_detail", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"postgres": "text"}},
 		{Name: "publisher_id", Type: field.TypeString, SchemaType: map[string]string{"postgres": "text"}},
 	}
 	// NodesTable holds the schema information for the "nodes" table.
@@ -92,9 +99,43 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "nodes_publishers_nodes",
-				Columns:    []*schema.Column{NodesColumns[10]},
+				Columns:    []*schema.Column{NodesColumns[16]},
 				RefColumns: []*schema.Column{PublishersColumns[0]},
 				OnDelete:   schema.NoAction,
+			},
+		},
+	}
+	// NodeReviewsColumns holds the columns for the "node_reviews" table.
+	NodeReviewsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "star", Type: field.TypeInt, Default: 0},
+		{Name: "node_id", Type: field.TypeString, SchemaType: map[string]string{"postgres": "text"}},
+		{Name: "user_id", Type: field.TypeString},
+	}
+	// NodeReviewsTable holds the schema information for the "node_reviews" table.
+	NodeReviewsTable = &schema.Table{
+		Name:       "node_reviews",
+		Columns:    NodeReviewsColumns,
+		PrimaryKey: []*schema.Column{NodeReviewsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "node_reviews_nodes_reviews",
+				Columns:    []*schema.Column{NodeReviewsColumns[2]},
+				RefColumns: []*schema.Column{NodesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "node_reviews_users_reviews",
+				Columns:    []*schema.Column{NodeReviewsColumns[3]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "nodereview_node_id_user_id",
+				Unique:  true,
+				Columns: []*schema.Column{NodeReviewsColumns[2], NodeReviewsColumns[3]},
 			},
 		},
 	}
@@ -107,6 +148,8 @@ var (
 		{Name: "changelog", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"postgres": "text"}},
 		{Name: "pip_dependencies", Type: field.TypeJSON, SchemaType: map[string]string{"postgres": "text"}},
 		{Name: "deprecated", Type: field.TypeBool, Default: false},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "banned", "deleted", "pending", "flagged"}, Default: "pending"},
+		{Name: "status_reason", Type: field.TypeString, Default: "", SchemaType: map[string]string{"postgres": "text"}},
 		{Name: "node_id", Type: field.TypeString, SchemaType: map[string]string{"postgres": "text"}},
 		{Name: "node_version_storage_file", Type: field.TypeUUID, Nullable: true},
 	}
@@ -118,13 +161,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "node_versions_nodes_versions",
-				Columns:    []*schema.Column{NodeVersionsColumns[7]},
+				Columns:    []*schema.Column{NodeVersionsColumns[9]},
 				RefColumns: []*schema.Column{NodesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "node_versions_storage_files_storage_file",
-				Columns:    []*schema.Column{NodeVersionsColumns[8]},
+				Columns:    []*schema.Column{NodeVersionsColumns[10]},
 				RefColumns: []*schema.Column{StorageFilesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -133,7 +176,7 @@ var (
 			{
 				Name:    "nodeversion_node_id_version",
 				Unique:  true,
-				Columns: []*schema.Column{NodeVersionsColumns[7], NodeVersionsColumns[3]},
+				Columns: []*schema.Column{NodeVersionsColumns[9], NodeVersionsColumns[3]},
 			},
 		},
 	}
@@ -179,6 +222,7 @@ var (
 		{Name: "support_email", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"postgres": "text"}},
 		{Name: "source_code_repo", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"postgres": "text"}},
 		{Name: "logo_url", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"postgres": "text"}},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"ACTIVE", "BANNED"}, Default: "ACTIVE"},
 	}
 	// PublishersTable holds the schema information for the "publishers" table.
 	PublishersTable = &schema.Table{
@@ -223,12 +267,21 @@ var (
 		{Name: "file_path", Type: field.TypeString, SchemaType: map[string]string{"postgres": "text"}},
 		{Name: "file_type", Type: field.TypeString, SchemaType: map[string]string{"postgres": "text"}},
 		{Name: "file_url", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"postgres": "text"}},
+		{Name: "ci_workflow_result_storage_file", Type: field.TypeUUID, Nullable: true},
 	}
 	// StorageFilesTable holds the schema information for the "storage_files" table.
 	StorageFilesTable = &schema.Table{
 		Name:       "storage_files",
 		Columns:    StorageFilesColumns,
 		PrimaryKey: []*schema.Column{StorageFilesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "storage_files_ci_workflow_results_storage_file",
+				Columns:    []*schema.Column{StorageFilesColumns[8]},
+				RefColumns: []*schema.Column{CiWorkflowResultsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
 	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
@@ -239,6 +292,7 @@ var (
 		{Name: "name", Type: field.TypeString, Nullable: true},
 		{Name: "is_approved", Type: field.TypeBool, Default: false},
 		{Name: "is_admin", Type: field.TypeBool, Default: false},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"ACTIVE", "BANNED"}, Default: "ACTIVE"},
 	}
 	// UsersTable holds the schema information for the "users" table.
 	UsersTable = &schema.Table{
@@ -251,6 +305,7 @@ var (
 		CiWorkflowResultsTable,
 		GitCommitsTable,
 		NodesTable,
+		NodeReviewsTable,
 		NodeVersionsTable,
 		PersonalAccessTokensTable,
 		PublishersTable,
@@ -261,12 +316,14 @@ var (
 )
 
 func init() {
-	CiWorkflowResultsTable.ForeignKeys[0].RefTable = StorageFilesTable
-	CiWorkflowResultsTable.ForeignKeys[1].RefTable = GitCommitsTable
+	CiWorkflowResultsTable.ForeignKeys[0].RefTable = GitCommitsTable
 	NodesTable.ForeignKeys[0].RefTable = PublishersTable
+	NodeReviewsTable.ForeignKeys[0].RefTable = NodesTable
+	NodeReviewsTable.ForeignKeys[1].RefTable = UsersTable
 	NodeVersionsTable.ForeignKeys[0].RefTable = NodesTable
 	NodeVersionsTable.ForeignKeys[1].RefTable = StorageFilesTable
 	PersonalAccessTokensTable.ForeignKeys[0].RefTable = PublishersTable
 	PublisherPermissionsTable.ForeignKeys[0].RefTable = PublishersTable
 	PublisherPermissionsTable.ForeignKeys[1].RefTable = UsersTable
+	StorageFilesTable.ForeignKeys[0].RefTable = CiWorkflowResultsTable
 }

@@ -9,6 +9,7 @@ import (
 	"registry-backend/ent/ciworkflowresult"
 	"registry-backend/ent/gitcommit"
 	"registry-backend/ent/node"
+	"registry-backend/ent/nodereview"
 	"registry-backend/ent/nodeversion"
 	"registry-backend/ent/personalaccesstoken"
 	"registry-backend/ent/predicate"
@@ -37,6 +38,7 @@ const (
 	TypeCIWorkflowResult    = "CIWorkflowResult"
 	TypeGitCommit           = "GitCommit"
 	TypeNode                = "Node"
+	TypeNodeReview          = "NodeReview"
 	TypeNodeVersion         = "NodeVersion"
 	TypePersonalAccessToken = "PersonalAccessToken"
 	TypePublisher           = "Publisher"
@@ -54,19 +56,29 @@ type CIWorkflowResultMutation struct {
 	create_time         *time.Time
 	update_time         *time.Time
 	operating_system    *string
-	gpu_type            *string
-	pytorch_version     *string
 	workflow_name       *string
 	run_id              *string
-	status              *string
+	job_id              *string
+	status              *schema.WorkflowRunStatusType
 	start_time          *int64
 	addstart_time       *int64
 	end_time            *int64
 	addend_time         *int64
+	python_version      *string
+	pytorch_version     *string
+	cuda_version        *string
+	comfy_run_flags     *string
+	avg_vram            *int
+	addavg_vram         *int
+	peak_vram           *int
+	addpeak_vram        *int
+	job_trigger_user    *string
+	metadata            *map[string]interface{}
 	clearedFields       map[string]struct{}
 	gitcommit           *uuid.UUID
 	clearedgitcommit    bool
-	storage_file        *uuid.UUID
+	storage_file        map[uuid.UUID]struct{}
+	removedstorage_file map[uuid.UUID]struct{}
 	clearedstorage_file bool
 	done                bool
 	oldValue            func(context.Context) (*CIWorkflowResult, error)
@@ -285,104 +297,6 @@ func (m *CIWorkflowResultMutation) ResetOperatingSystem() {
 	m.operating_system = nil
 }
 
-// SetGpuType sets the "gpu_type" field.
-func (m *CIWorkflowResultMutation) SetGpuType(s string) {
-	m.gpu_type = &s
-}
-
-// GpuType returns the value of the "gpu_type" field in the mutation.
-func (m *CIWorkflowResultMutation) GpuType() (r string, exists bool) {
-	v := m.gpu_type
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldGpuType returns the old "gpu_type" field's value of the CIWorkflowResult entity.
-// If the CIWorkflowResult object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *CIWorkflowResultMutation) OldGpuType(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldGpuType is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldGpuType requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldGpuType: %w", err)
-	}
-	return oldValue.GpuType, nil
-}
-
-// ClearGpuType clears the value of the "gpu_type" field.
-func (m *CIWorkflowResultMutation) ClearGpuType() {
-	m.gpu_type = nil
-	m.clearedFields[ciworkflowresult.FieldGpuType] = struct{}{}
-}
-
-// GpuTypeCleared returns if the "gpu_type" field was cleared in this mutation.
-func (m *CIWorkflowResultMutation) GpuTypeCleared() bool {
-	_, ok := m.clearedFields[ciworkflowresult.FieldGpuType]
-	return ok
-}
-
-// ResetGpuType resets all changes to the "gpu_type" field.
-func (m *CIWorkflowResultMutation) ResetGpuType() {
-	m.gpu_type = nil
-	delete(m.clearedFields, ciworkflowresult.FieldGpuType)
-}
-
-// SetPytorchVersion sets the "pytorch_version" field.
-func (m *CIWorkflowResultMutation) SetPytorchVersion(s string) {
-	m.pytorch_version = &s
-}
-
-// PytorchVersion returns the value of the "pytorch_version" field in the mutation.
-func (m *CIWorkflowResultMutation) PytorchVersion() (r string, exists bool) {
-	v := m.pytorch_version
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldPytorchVersion returns the old "pytorch_version" field's value of the CIWorkflowResult entity.
-// If the CIWorkflowResult object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *CIWorkflowResultMutation) OldPytorchVersion(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldPytorchVersion is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldPytorchVersion requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldPytorchVersion: %w", err)
-	}
-	return oldValue.PytorchVersion, nil
-}
-
-// ClearPytorchVersion clears the value of the "pytorch_version" field.
-func (m *CIWorkflowResultMutation) ClearPytorchVersion() {
-	m.pytorch_version = nil
-	m.clearedFields[ciworkflowresult.FieldPytorchVersion] = struct{}{}
-}
-
-// PytorchVersionCleared returns if the "pytorch_version" field was cleared in this mutation.
-func (m *CIWorkflowResultMutation) PytorchVersionCleared() bool {
-	_, ok := m.clearedFields[ciworkflowresult.FieldPytorchVersion]
-	return ok
-}
-
-// ResetPytorchVersion resets all changes to the "pytorch_version" field.
-func (m *CIWorkflowResultMutation) ResetPytorchVersion() {
-	m.pytorch_version = nil
-	delete(m.clearedFields, ciworkflowresult.FieldPytorchVersion)
-}
-
 // SetWorkflowName sets the "workflow_name" field.
 func (m *CIWorkflowResultMutation) SetWorkflowName(s string) {
 	m.workflow_name = &s
@@ -481,13 +395,62 @@ func (m *CIWorkflowResultMutation) ResetRunID() {
 	delete(m.clearedFields, ciworkflowresult.FieldRunID)
 }
 
+// SetJobID sets the "job_id" field.
+func (m *CIWorkflowResultMutation) SetJobID(s string) {
+	m.job_id = &s
+}
+
+// JobID returns the value of the "job_id" field in the mutation.
+func (m *CIWorkflowResultMutation) JobID() (r string, exists bool) {
+	v := m.job_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldJobID returns the old "job_id" field's value of the CIWorkflowResult entity.
+// If the CIWorkflowResult object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CIWorkflowResultMutation) OldJobID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldJobID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldJobID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldJobID: %w", err)
+	}
+	return oldValue.JobID, nil
+}
+
+// ClearJobID clears the value of the "job_id" field.
+func (m *CIWorkflowResultMutation) ClearJobID() {
+	m.job_id = nil
+	m.clearedFields[ciworkflowresult.FieldJobID] = struct{}{}
+}
+
+// JobIDCleared returns if the "job_id" field was cleared in this mutation.
+func (m *CIWorkflowResultMutation) JobIDCleared() bool {
+	_, ok := m.clearedFields[ciworkflowresult.FieldJobID]
+	return ok
+}
+
+// ResetJobID resets all changes to the "job_id" field.
+func (m *CIWorkflowResultMutation) ResetJobID() {
+	m.job_id = nil
+	delete(m.clearedFields, ciworkflowresult.FieldJobID)
+}
+
 // SetStatus sets the "status" field.
-func (m *CIWorkflowResultMutation) SetStatus(s string) {
-	m.status = &s
+func (m *CIWorkflowResultMutation) SetStatus(srst schema.WorkflowRunStatusType) {
+	m.status = &srst
 }
 
 // Status returns the value of the "status" field in the mutation.
-func (m *CIWorkflowResultMutation) Status() (r string, exists bool) {
+func (m *CIWorkflowResultMutation) Status() (r schema.WorkflowRunStatusType, exists bool) {
 	v := m.status
 	if v == nil {
 		return
@@ -498,7 +461,7 @@ func (m *CIWorkflowResultMutation) Status() (r string, exists bool) {
 // OldStatus returns the old "status" field's value of the CIWorkflowResult entity.
 // If the CIWorkflowResult object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *CIWorkflowResultMutation) OldStatus(ctx context.Context) (v string, err error) {
+func (m *CIWorkflowResultMutation) OldStatus(ctx context.Context) (v schema.WorkflowRunStatusType, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
 	}
@@ -512,22 +475,9 @@ func (m *CIWorkflowResultMutation) OldStatus(ctx context.Context) (v string, err
 	return oldValue.Status, nil
 }
 
-// ClearStatus clears the value of the "status" field.
-func (m *CIWorkflowResultMutation) ClearStatus() {
-	m.status = nil
-	m.clearedFields[ciworkflowresult.FieldStatus] = struct{}{}
-}
-
-// StatusCleared returns if the "status" field was cleared in this mutation.
-func (m *CIWorkflowResultMutation) StatusCleared() bool {
-	_, ok := m.clearedFields[ciworkflowresult.FieldStatus]
-	return ok
-}
-
 // ResetStatus resets all changes to the "status" field.
 func (m *CIWorkflowResultMutation) ResetStatus() {
 	m.status = nil
-	delete(m.clearedFields, ciworkflowresult.FieldStatus)
 }
 
 // SetStartTime sets the "start_time" field.
@@ -670,6 +620,440 @@ func (m *CIWorkflowResultMutation) ResetEndTime() {
 	delete(m.clearedFields, ciworkflowresult.FieldEndTime)
 }
 
+// SetPythonVersion sets the "python_version" field.
+func (m *CIWorkflowResultMutation) SetPythonVersion(s string) {
+	m.python_version = &s
+}
+
+// PythonVersion returns the value of the "python_version" field in the mutation.
+func (m *CIWorkflowResultMutation) PythonVersion() (r string, exists bool) {
+	v := m.python_version
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPythonVersion returns the old "python_version" field's value of the CIWorkflowResult entity.
+// If the CIWorkflowResult object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CIWorkflowResultMutation) OldPythonVersion(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPythonVersion is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPythonVersion requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPythonVersion: %w", err)
+	}
+	return oldValue.PythonVersion, nil
+}
+
+// ClearPythonVersion clears the value of the "python_version" field.
+func (m *CIWorkflowResultMutation) ClearPythonVersion() {
+	m.python_version = nil
+	m.clearedFields[ciworkflowresult.FieldPythonVersion] = struct{}{}
+}
+
+// PythonVersionCleared returns if the "python_version" field was cleared in this mutation.
+func (m *CIWorkflowResultMutation) PythonVersionCleared() bool {
+	_, ok := m.clearedFields[ciworkflowresult.FieldPythonVersion]
+	return ok
+}
+
+// ResetPythonVersion resets all changes to the "python_version" field.
+func (m *CIWorkflowResultMutation) ResetPythonVersion() {
+	m.python_version = nil
+	delete(m.clearedFields, ciworkflowresult.FieldPythonVersion)
+}
+
+// SetPytorchVersion sets the "pytorch_version" field.
+func (m *CIWorkflowResultMutation) SetPytorchVersion(s string) {
+	m.pytorch_version = &s
+}
+
+// PytorchVersion returns the value of the "pytorch_version" field in the mutation.
+func (m *CIWorkflowResultMutation) PytorchVersion() (r string, exists bool) {
+	v := m.pytorch_version
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPytorchVersion returns the old "pytorch_version" field's value of the CIWorkflowResult entity.
+// If the CIWorkflowResult object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CIWorkflowResultMutation) OldPytorchVersion(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPytorchVersion is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPytorchVersion requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPytorchVersion: %w", err)
+	}
+	return oldValue.PytorchVersion, nil
+}
+
+// ClearPytorchVersion clears the value of the "pytorch_version" field.
+func (m *CIWorkflowResultMutation) ClearPytorchVersion() {
+	m.pytorch_version = nil
+	m.clearedFields[ciworkflowresult.FieldPytorchVersion] = struct{}{}
+}
+
+// PytorchVersionCleared returns if the "pytorch_version" field was cleared in this mutation.
+func (m *CIWorkflowResultMutation) PytorchVersionCleared() bool {
+	_, ok := m.clearedFields[ciworkflowresult.FieldPytorchVersion]
+	return ok
+}
+
+// ResetPytorchVersion resets all changes to the "pytorch_version" field.
+func (m *CIWorkflowResultMutation) ResetPytorchVersion() {
+	m.pytorch_version = nil
+	delete(m.clearedFields, ciworkflowresult.FieldPytorchVersion)
+}
+
+// SetCudaVersion sets the "cuda_version" field.
+func (m *CIWorkflowResultMutation) SetCudaVersion(s string) {
+	m.cuda_version = &s
+}
+
+// CudaVersion returns the value of the "cuda_version" field in the mutation.
+func (m *CIWorkflowResultMutation) CudaVersion() (r string, exists bool) {
+	v := m.cuda_version
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCudaVersion returns the old "cuda_version" field's value of the CIWorkflowResult entity.
+// If the CIWorkflowResult object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CIWorkflowResultMutation) OldCudaVersion(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCudaVersion is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCudaVersion requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCudaVersion: %w", err)
+	}
+	return oldValue.CudaVersion, nil
+}
+
+// ClearCudaVersion clears the value of the "cuda_version" field.
+func (m *CIWorkflowResultMutation) ClearCudaVersion() {
+	m.cuda_version = nil
+	m.clearedFields[ciworkflowresult.FieldCudaVersion] = struct{}{}
+}
+
+// CudaVersionCleared returns if the "cuda_version" field was cleared in this mutation.
+func (m *CIWorkflowResultMutation) CudaVersionCleared() bool {
+	_, ok := m.clearedFields[ciworkflowresult.FieldCudaVersion]
+	return ok
+}
+
+// ResetCudaVersion resets all changes to the "cuda_version" field.
+func (m *CIWorkflowResultMutation) ResetCudaVersion() {
+	m.cuda_version = nil
+	delete(m.clearedFields, ciworkflowresult.FieldCudaVersion)
+}
+
+// SetComfyRunFlags sets the "comfy_run_flags" field.
+func (m *CIWorkflowResultMutation) SetComfyRunFlags(s string) {
+	m.comfy_run_flags = &s
+}
+
+// ComfyRunFlags returns the value of the "comfy_run_flags" field in the mutation.
+func (m *CIWorkflowResultMutation) ComfyRunFlags() (r string, exists bool) {
+	v := m.comfy_run_flags
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldComfyRunFlags returns the old "comfy_run_flags" field's value of the CIWorkflowResult entity.
+// If the CIWorkflowResult object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CIWorkflowResultMutation) OldComfyRunFlags(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldComfyRunFlags is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldComfyRunFlags requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldComfyRunFlags: %w", err)
+	}
+	return oldValue.ComfyRunFlags, nil
+}
+
+// ClearComfyRunFlags clears the value of the "comfy_run_flags" field.
+func (m *CIWorkflowResultMutation) ClearComfyRunFlags() {
+	m.comfy_run_flags = nil
+	m.clearedFields[ciworkflowresult.FieldComfyRunFlags] = struct{}{}
+}
+
+// ComfyRunFlagsCleared returns if the "comfy_run_flags" field was cleared in this mutation.
+func (m *CIWorkflowResultMutation) ComfyRunFlagsCleared() bool {
+	_, ok := m.clearedFields[ciworkflowresult.FieldComfyRunFlags]
+	return ok
+}
+
+// ResetComfyRunFlags resets all changes to the "comfy_run_flags" field.
+func (m *CIWorkflowResultMutation) ResetComfyRunFlags() {
+	m.comfy_run_flags = nil
+	delete(m.clearedFields, ciworkflowresult.FieldComfyRunFlags)
+}
+
+// SetAvgVram sets the "avg_vram" field.
+func (m *CIWorkflowResultMutation) SetAvgVram(i int) {
+	m.avg_vram = &i
+	m.addavg_vram = nil
+}
+
+// AvgVram returns the value of the "avg_vram" field in the mutation.
+func (m *CIWorkflowResultMutation) AvgVram() (r int, exists bool) {
+	v := m.avg_vram
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAvgVram returns the old "avg_vram" field's value of the CIWorkflowResult entity.
+// If the CIWorkflowResult object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CIWorkflowResultMutation) OldAvgVram(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAvgVram is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAvgVram requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAvgVram: %w", err)
+	}
+	return oldValue.AvgVram, nil
+}
+
+// AddAvgVram adds i to the "avg_vram" field.
+func (m *CIWorkflowResultMutation) AddAvgVram(i int) {
+	if m.addavg_vram != nil {
+		*m.addavg_vram += i
+	} else {
+		m.addavg_vram = &i
+	}
+}
+
+// AddedAvgVram returns the value that was added to the "avg_vram" field in this mutation.
+func (m *CIWorkflowResultMutation) AddedAvgVram() (r int, exists bool) {
+	v := m.addavg_vram
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearAvgVram clears the value of the "avg_vram" field.
+func (m *CIWorkflowResultMutation) ClearAvgVram() {
+	m.avg_vram = nil
+	m.addavg_vram = nil
+	m.clearedFields[ciworkflowresult.FieldAvgVram] = struct{}{}
+}
+
+// AvgVramCleared returns if the "avg_vram" field was cleared in this mutation.
+func (m *CIWorkflowResultMutation) AvgVramCleared() bool {
+	_, ok := m.clearedFields[ciworkflowresult.FieldAvgVram]
+	return ok
+}
+
+// ResetAvgVram resets all changes to the "avg_vram" field.
+func (m *CIWorkflowResultMutation) ResetAvgVram() {
+	m.avg_vram = nil
+	m.addavg_vram = nil
+	delete(m.clearedFields, ciworkflowresult.FieldAvgVram)
+}
+
+// SetPeakVram sets the "peak_vram" field.
+func (m *CIWorkflowResultMutation) SetPeakVram(i int) {
+	m.peak_vram = &i
+	m.addpeak_vram = nil
+}
+
+// PeakVram returns the value of the "peak_vram" field in the mutation.
+func (m *CIWorkflowResultMutation) PeakVram() (r int, exists bool) {
+	v := m.peak_vram
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPeakVram returns the old "peak_vram" field's value of the CIWorkflowResult entity.
+// If the CIWorkflowResult object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CIWorkflowResultMutation) OldPeakVram(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPeakVram is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPeakVram requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPeakVram: %w", err)
+	}
+	return oldValue.PeakVram, nil
+}
+
+// AddPeakVram adds i to the "peak_vram" field.
+func (m *CIWorkflowResultMutation) AddPeakVram(i int) {
+	if m.addpeak_vram != nil {
+		*m.addpeak_vram += i
+	} else {
+		m.addpeak_vram = &i
+	}
+}
+
+// AddedPeakVram returns the value that was added to the "peak_vram" field in this mutation.
+func (m *CIWorkflowResultMutation) AddedPeakVram() (r int, exists bool) {
+	v := m.addpeak_vram
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearPeakVram clears the value of the "peak_vram" field.
+func (m *CIWorkflowResultMutation) ClearPeakVram() {
+	m.peak_vram = nil
+	m.addpeak_vram = nil
+	m.clearedFields[ciworkflowresult.FieldPeakVram] = struct{}{}
+}
+
+// PeakVramCleared returns if the "peak_vram" field was cleared in this mutation.
+func (m *CIWorkflowResultMutation) PeakVramCleared() bool {
+	_, ok := m.clearedFields[ciworkflowresult.FieldPeakVram]
+	return ok
+}
+
+// ResetPeakVram resets all changes to the "peak_vram" field.
+func (m *CIWorkflowResultMutation) ResetPeakVram() {
+	m.peak_vram = nil
+	m.addpeak_vram = nil
+	delete(m.clearedFields, ciworkflowresult.FieldPeakVram)
+}
+
+// SetJobTriggerUser sets the "job_trigger_user" field.
+func (m *CIWorkflowResultMutation) SetJobTriggerUser(s string) {
+	m.job_trigger_user = &s
+}
+
+// JobTriggerUser returns the value of the "job_trigger_user" field in the mutation.
+func (m *CIWorkflowResultMutation) JobTriggerUser() (r string, exists bool) {
+	v := m.job_trigger_user
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldJobTriggerUser returns the old "job_trigger_user" field's value of the CIWorkflowResult entity.
+// If the CIWorkflowResult object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CIWorkflowResultMutation) OldJobTriggerUser(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldJobTriggerUser is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldJobTriggerUser requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldJobTriggerUser: %w", err)
+	}
+	return oldValue.JobTriggerUser, nil
+}
+
+// ClearJobTriggerUser clears the value of the "job_trigger_user" field.
+func (m *CIWorkflowResultMutation) ClearJobTriggerUser() {
+	m.job_trigger_user = nil
+	m.clearedFields[ciworkflowresult.FieldJobTriggerUser] = struct{}{}
+}
+
+// JobTriggerUserCleared returns if the "job_trigger_user" field was cleared in this mutation.
+func (m *CIWorkflowResultMutation) JobTriggerUserCleared() bool {
+	_, ok := m.clearedFields[ciworkflowresult.FieldJobTriggerUser]
+	return ok
+}
+
+// ResetJobTriggerUser resets all changes to the "job_trigger_user" field.
+func (m *CIWorkflowResultMutation) ResetJobTriggerUser() {
+	m.job_trigger_user = nil
+	delete(m.clearedFields, ciworkflowresult.FieldJobTriggerUser)
+}
+
+// SetMetadata sets the "metadata" field.
+func (m *CIWorkflowResultMutation) SetMetadata(value map[string]interface{}) {
+	m.metadata = &value
+}
+
+// Metadata returns the value of the "metadata" field in the mutation.
+func (m *CIWorkflowResultMutation) Metadata() (r map[string]interface{}, exists bool) {
+	v := m.metadata
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMetadata returns the old "metadata" field's value of the CIWorkflowResult entity.
+// If the CIWorkflowResult object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CIWorkflowResultMutation) OldMetadata(ctx context.Context) (v map[string]interface{}, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMetadata is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMetadata requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMetadata: %w", err)
+	}
+	return oldValue.Metadata, nil
+}
+
+// ClearMetadata clears the value of the "metadata" field.
+func (m *CIWorkflowResultMutation) ClearMetadata() {
+	m.metadata = nil
+	m.clearedFields[ciworkflowresult.FieldMetadata] = struct{}{}
+}
+
+// MetadataCleared returns if the "metadata" field was cleared in this mutation.
+func (m *CIWorkflowResultMutation) MetadataCleared() bool {
+	_, ok := m.clearedFields[ciworkflowresult.FieldMetadata]
+	return ok
+}
+
+// ResetMetadata resets all changes to the "metadata" field.
+func (m *CIWorkflowResultMutation) ResetMetadata() {
+	m.metadata = nil
+	delete(m.clearedFields, ciworkflowresult.FieldMetadata)
+}
+
 // SetGitcommitID sets the "gitcommit" edge to the GitCommit entity by id.
 func (m *CIWorkflowResultMutation) SetGitcommitID(id uuid.UUID) {
 	m.gitcommit = &id
@@ -709,9 +1093,14 @@ func (m *CIWorkflowResultMutation) ResetGitcommit() {
 	m.clearedgitcommit = false
 }
 
-// SetStorageFileID sets the "storage_file" edge to the StorageFile entity by id.
-func (m *CIWorkflowResultMutation) SetStorageFileID(id uuid.UUID) {
-	m.storage_file = &id
+// AddStorageFileIDs adds the "storage_file" edge to the StorageFile entity by ids.
+func (m *CIWorkflowResultMutation) AddStorageFileIDs(ids ...uuid.UUID) {
+	if m.storage_file == nil {
+		m.storage_file = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.storage_file[ids[i]] = struct{}{}
+	}
 }
 
 // ClearStorageFile clears the "storage_file" edge to the StorageFile entity.
@@ -724,20 +1113,29 @@ func (m *CIWorkflowResultMutation) StorageFileCleared() bool {
 	return m.clearedstorage_file
 }
 
-// StorageFileID returns the "storage_file" edge ID in the mutation.
-func (m *CIWorkflowResultMutation) StorageFileID() (id uuid.UUID, exists bool) {
-	if m.storage_file != nil {
-		return *m.storage_file, true
+// RemoveStorageFileIDs removes the "storage_file" edge to the StorageFile entity by IDs.
+func (m *CIWorkflowResultMutation) RemoveStorageFileIDs(ids ...uuid.UUID) {
+	if m.removedstorage_file == nil {
+		m.removedstorage_file = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.storage_file, ids[i])
+		m.removedstorage_file[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedStorageFile returns the removed IDs of the "storage_file" edge to the StorageFile entity.
+func (m *CIWorkflowResultMutation) RemovedStorageFileIDs() (ids []uuid.UUID) {
+	for id := range m.removedstorage_file {
+		ids = append(ids, id)
 	}
 	return
 }
 
 // StorageFileIDs returns the "storage_file" edge IDs in the mutation.
-// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// StorageFileID instead. It exists only for internal usage by the builders.
 func (m *CIWorkflowResultMutation) StorageFileIDs() (ids []uuid.UUID) {
-	if id := m.storage_file; id != nil {
-		ids = append(ids, *id)
+	for id := range m.storage_file {
+		ids = append(ids, id)
 	}
 	return
 }
@@ -746,6 +1144,7 @@ func (m *CIWorkflowResultMutation) StorageFileIDs() (ids []uuid.UUID) {
 func (m *CIWorkflowResultMutation) ResetStorageFile() {
 	m.storage_file = nil
 	m.clearedstorage_file = false
+	m.removedstorage_file = nil
 }
 
 // Where appends a list predicates to the CIWorkflowResultMutation builder.
@@ -782,7 +1181,7 @@ func (m *CIWorkflowResultMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *CIWorkflowResultMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 17)
 	if m.create_time != nil {
 		fields = append(fields, ciworkflowresult.FieldCreateTime)
 	}
@@ -792,17 +1191,14 @@ func (m *CIWorkflowResultMutation) Fields() []string {
 	if m.operating_system != nil {
 		fields = append(fields, ciworkflowresult.FieldOperatingSystem)
 	}
-	if m.gpu_type != nil {
-		fields = append(fields, ciworkflowresult.FieldGpuType)
-	}
-	if m.pytorch_version != nil {
-		fields = append(fields, ciworkflowresult.FieldPytorchVersion)
-	}
 	if m.workflow_name != nil {
 		fields = append(fields, ciworkflowresult.FieldWorkflowName)
 	}
 	if m.run_id != nil {
 		fields = append(fields, ciworkflowresult.FieldRunID)
+	}
+	if m.job_id != nil {
+		fields = append(fields, ciworkflowresult.FieldJobID)
 	}
 	if m.status != nil {
 		fields = append(fields, ciworkflowresult.FieldStatus)
@@ -812,6 +1208,30 @@ func (m *CIWorkflowResultMutation) Fields() []string {
 	}
 	if m.end_time != nil {
 		fields = append(fields, ciworkflowresult.FieldEndTime)
+	}
+	if m.python_version != nil {
+		fields = append(fields, ciworkflowresult.FieldPythonVersion)
+	}
+	if m.pytorch_version != nil {
+		fields = append(fields, ciworkflowresult.FieldPytorchVersion)
+	}
+	if m.cuda_version != nil {
+		fields = append(fields, ciworkflowresult.FieldCudaVersion)
+	}
+	if m.comfy_run_flags != nil {
+		fields = append(fields, ciworkflowresult.FieldComfyRunFlags)
+	}
+	if m.avg_vram != nil {
+		fields = append(fields, ciworkflowresult.FieldAvgVram)
+	}
+	if m.peak_vram != nil {
+		fields = append(fields, ciworkflowresult.FieldPeakVram)
+	}
+	if m.job_trigger_user != nil {
+		fields = append(fields, ciworkflowresult.FieldJobTriggerUser)
+	}
+	if m.metadata != nil {
+		fields = append(fields, ciworkflowresult.FieldMetadata)
 	}
 	return fields
 }
@@ -827,20 +1247,34 @@ func (m *CIWorkflowResultMutation) Field(name string) (ent.Value, bool) {
 		return m.UpdateTime()
 	case ciworkflowresult.FieldOperatingSystem:
 		return m.OperatingSystem()
-	case ciworkflowresult.FieldGpuType:
-		return m.GpuType()
-	case ciworkflowresult.FieldPytorchVersion:
-		return m.PytorchVersion()
 	case ciworkflowresult.FieldWorkflowName:
 		return m.WorkflowName()
 	case ciworkflowresult.FieldRunID:
 		return m.RunID()
+	case ciworkflowresult.FieldJobID:
+		return m.JobID()
 	case ciworkflowresult.FieldStatus:
 		return m.Status()
 	case ciworkflowresult.FieldStartTime:
 		return m.StartTime()
 	case ciworkflowresult.FieldEndTime:
 		return m.EndTime()
+	case ciworkflowresult.FieldPythonVersion:
+		return m.PythonVersion()
+	case ciworkflowresult.FieldPytorchVersion:
+		return m.PytorchVersion()
+	case ciworkflowresult.FieldCudaVersion:
+		return m.CudaVersion()
+	case ciworkflowresult.FieldComfyRunFlags:
+		return m.ComfyRunFlags()
+	case ciworkflowresult.FieldAvgVram:
+		return m.AvgVram()
+	case ciworkflowresult.FieldPeakVram:
+		return m.PeakVram()
+	case ciworkflowresult.FieldJobTriggerUser:
+		return m.JobTriggerUser()
+	case ciworkflowresult.FieldMetadata:
+		return m.Metadata()
 	}
 	return nil, false
 }
@@ -856,20 +1290,34 @@ func (m *CIWorkflowResultMutation) OldField(ctx context.Context, name string) (e
 		return m.OldUpdateTime(ctx)
 	case ciworkflowresult.FieldOperatingSystem:
 		return m.OldOperatingSystem(ctx)
-	case ciworkflowresult.FieldGpuType:
-		return m.OldGpuType(ctx)
-	case ciworkflowresult.FieldPytorchVersion:
-		return m.OldPytorchVersion(ctx)
 	case ciworkflowresult.FieldWorkflowName:
 		return m.OldWorkflowName(ctx)
 	case ciworkflowresult.FieldRunID:
 		return m.OldRunID(ctx)
+	case ciworkflowresult.FieldJobID:
+		return m.OldJobID(ctx)
 	case ciworkflowresult.FieldStatus:
 		return m.OldStatus(ctx)
 	case ciworkflowresult.FieldStartTime:
 		return m.OldStartTime(ctx)
 	case ciworkflowresult.FieldEndTime:
 		return m.OldEndTime(ctx)
+	case ciworkflowresult.FieldPythonVersion:
+		return m.OldPythonVersion(ctx)
+	case ciworkflowresult.FieldPytorchVersion:
+		return m.OldPytorchVersion(ctx)
+	case ciworkflowresult.FieldCudaVersion:
+		return m.OldCudaVersion(ctx)
+	case ciworkflowresult.FieldComfyRunFlags:
+		return m.OldComfyRunFlags(ctx)
+	case ciworkflowresult.FieldAvgVram:
+		return m.OldAvgVram(ctx)
+	case ciworkflowresult.FieldPeakVram:
+		return m.OldPeakVram(ctx)
+	case ciworkflowresult.FieldJobTriggerUser:
+		return m.OldJobTriggerUser(ctx)
+	case ciworkflowresult.FieldMetadata:
+		return m.OldMetadata(ctx)
 	}
 	return nil, fmt.Errorf("unknown CIWorkflowResult field %s", name)
 }
@@ -900,20 +1348,6 @@ func (m *CIWorkflowResultMutation) SetField(name string, value ent.Value) error 
 		}
 		m.SetOperatingSystem(v)
 		return nil
-	case ciworkflowresult.FieldGpuType:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetGpuType(v)
-		return nil
-	case ciworkflowresult.FieldPytorchVersion:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetPytorchVersion(v)
-		return nil
 	case ciworkflowresult.FieldWorkflowName:
 		v, ok := value.(string)
 		if !ok {
@@ -928,8 +1362,15 @@ func (m *CIWorkflowResultMutation) SetField(name string, value ent.Value) error 
 		}
 		m.SetRunID(v)
 		return nil
-	case ciworkflowresult.FieldStatus:
+	case ciworkflowresult.FieldJobID:
 		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetJobID(v)
+		return nil
+	case ciworkflowresult.FieldStatus:
+		v, ok := value.(schema.WorkflowRunStatusType)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
@@ -949,6 +1390,62 @@ func (m *CIWorkflowResultMutation) SetField(name string, value ent.Value) error 
 		}
 		m.SetEndTime(v)
 		return nil
+	case ciworkflowresult.FieldPythonVersion:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPythonVersion(v)
+		return nil
+	case ciworkflowresult.FieldPytorchVersion:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPytorchVersion(v)
+		return nil
+	case ciworkflowresult.FieldCudaVersion:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCudaVersion(v)
+		return nil
+	case ciworkflowresult.FieldComfyRunFlags:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetComfyRunFlags(v)
+		return nil
+	case ciworkflowresult.FieldAvgVram:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAvgVram(v)
+		return nil
+	case ciworkflowresult.FieldPeakVram:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPeakVram(v)
+		return nil
+	case ciworkflowresult.FieldJobTriggerUser:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetJobTriggerUser(v)
+		return nil
+	case ciworkflowresult.FieldMetadata:
+		v, ok := value.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMetadata(v)
+		return nil
 	}
 	return fmt.Errorf("unknown CIWorkflowResult field %s", name)
 }
@@ -963,6 +1460,12 @@ func (m *CIWorkflowResultMutation) AddedFields() []string {
 	if m.addend_time != nil {
 		fields = append(fields, ciworkflowresult.FieldEndTime)
 	}
+	if m.addavg_vram != nil {
+		fields = append(fields, ciworkflowresult.FieldAvgVram)
+	}
+	if m.addpeak_vram != nil {
+		fields = append(fields, ciworkflowresult.FieldPeakVram)
+	}
 	return fields
 }
 
@@ -975,6 +1478,10 @@ func (m *CIWorkflowResultMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedStartTime()
 	case ciworkflowresult.FieldEndTime:
 		return m.AddedEndTime()
+	case ciworkflowresult.FieldAvgVram:
+		return m.AddedAvgVram()
+	case ciworkflowresult.FieldPeakVram:
+		return m.AddedPeakVram()
 	}
 	return nil, false
 }
@@ -998,6 +1505,20 @@ func (m *CIWorkflowResultMutation) AddField(name string, value ent.Value) error 
 		}
 		m.AddEndTime(v)
 		return nil
+	case ciworkflowresult.FieldAvgVram:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddAvgVram(v)
+		return nil
+	case ciworkflowresult.FieldPeakVram:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddPeakVram(v)
+		return nil
 	}
 	return fmt.Errorf("unknown CIWorkflowResult numeric field %s", name)
 }
@@ -1006,26 +1527,44 @@ func (m *CIWorkflowResultMutation) AddField(name string, value ent.Value) error 
 // mutation.
 func (m *CIWorkflowResultMutation) ClearedFields() []string {
 	var fields []string
-	if m.FieldCleared(ciworkflowresult.FieldGpuType) {
-		fields = append(fields, ciworkflowresult.FieldGpuType)
-	}
-	if m.FieldCleared(ciworkflowresult.FieldPytorchVersion) {
-		fields = append(fields, ciworkflowresult.FieldPytorchVersion)
-	}
 	if m.FieldCleared(ciworkflowresult.FieldWorkflowName) {
 		fields = append(fields, ciworkflowresult.FieldWorkflowName)
 	}
 	if m.FieldCleared(ciworkflowresult.FieldRunID) {
 		fields = append(fields, ciworkflowresult.FieldRunID)
 	}
-	if m.FieldCleared(ciworkflowresult.FieldStatus) {
-		fields = append(fields, ciworkflowresult.FieldStatus)
+	if m.FieldCleared(ciworkflowresult.FieldJobID) {
+		fields = append(fields, ciworkflowresult.FieldJobID)
 	}
 	if m.FieldCleared(ciworkflowresult.FieldStartTime) {
 		fields = append(fields, ciworkflowresult.FieldStartTime)
 	}
 	if m.FieldCleared(ciworkflowresult.FieldEndTime) {
 		fields = append(fields, ciworkflowresult.FieldEndTime)
+	}
+	if m.FieldCleared(ciworkflowresult.FieldPythonVersion) {
+		fields = append(fields, ciworkflowresult.FieldPythonVersion)
+	}
+	if m.FieldCleared(ciworkflowresult.FieldPytorchVersion) {
+		fields = append(fields, ciworkflowresult.FieldPytorchVersion)
+	}
+	if m.FieldCleared(ciworkflowresult.FieldCudaVersion) {
+		fields = append(fields, ciworkflowresult.FieldCudaVersion)
+	}
+	if m.FieldCleared(ciworkflowresult.FieldComfyRunFlags) {
+		fields = append(fields, ciworkflowresult.FieldComfyRunFlags)
+	}
+	if m.FieldCleared(ciworkflowresult.FieldAvgVram) {
+		fields = append(fields, ciworkflowresult.FieldAvgVram)
+	}
+	if m.FieldCleared(ciworkflowresult.FieldPeakVram) {
+		fields = append(fields, ciworkflowresult.FieldPeakVram)
+	}
+	if m.FieldCleared(ciworkflowresult.FieldJobTriggerUser) {
+		fields = append(fields, ciworkflowresult.FieldJobTriggerUser)
+	}
+	if m.FieldCleared(ciworkflowresult.FieldMetadata) {
+		fields = append(fields, ciworkflowresult.FieldMetadata)
 	}
 	return fields
 }
@@ -1041,26 +1580,44 @@ func (m *CIWorkflowResultMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *CIWorkflowResultMutation) ClearField(name string) error {
 	switch name {
-	case ciworkflowresult.FieldGpuType:
-		m.ClearGpuType()
-		return nil
-	case ciworkflowresult.FieldPytorchVersion:
-		m.ClearPytorchVersion()
-		return nil
 	case ciworkflowresult.FieldWorkflowName:
 		m.ClearWorkflowName()
 		return nil
 	case ciworkflowresult.FieldRunID:
 		m.ClearRunID()
 		return nil
-	case ciworkflowresult.FieldStatus:
-		m.ClearStatus()
+	case ciworkflowresult.FieldJobID:
+		m.ClearJobID()
 		return nil
 	case ciworkflowresult.FieldStartTime:
 		m.ClearStartTime()
 		return nil
 	case ciworkflowresult.FieldEndTime:
 		m.ClearEndTime()
+		return nil
+	case ciworkflowresult.FieldPythonVersion:
+		m.ClearPythonVersion()
+		return nil
+	case ciworkflowresult.FieldPytorchVersion:
+		m.ClearPytorchVersion()
+		return nil
+	case ciworkflowresult.FieldCudaVersion:
+		m.ClearCudaVersion()
+		return nil
+	case ciworkflowresult.FieldComfyRunFlags:
+		m.ClearComfyRunFlags()
+		return nil
+	case ciworkflowresult.FieldAvgVram:
+		m.ClearAvgVram()
+		return nil
+	case ciworkflowresult.FieldPeakVram:
+		m.ClearPeakVram()
+		return nil
+	case ciworkflowresult.FieldJobTriggerUser:
+		m.ClearJobTriggerUser()
+		return nil
+	case ciworkflowresult.FieldMetadata:
+		m.ClearMetadata()
 		return nil
 	}
 	return fmt.Errorf("unknown CIWorkflowResult nullable field %s", name)
@@ -1079,17 +1636,14 @@ func (m *CIWorkflowResultMutation) ResetField(name string) error {
 	case ciworkflowresult.FieldOperatingSystem:
 		m.ResetOperatingSystem()
 		return nil
-	case ciworkflowresult.FieldGpuType:
-		m.ResetGpuType()
-		return nil
-	case ciworkflowresult.FieldPytorchVersion:
-		m.ResetPytorchVersion()
-		return nil
 	case ciworkflowresult.FieldWorkflowName:
 		m.ResetWorkflowName()
 		return nil
 	case ciworkflowresult.FieldRunID:
 		m.ResetRunID()
+		return nil
+	case ciworkflowresult.FieldJobID:
+		m.ResetJobID()
 		return nil
 	case ciworkflowresult.FieldStatus:
 		m.ResetStatus()
@@ -1099,6 +1653,30 @@ func (m *CIWorkflowResultMutation) ResetField(name string) error {
 		return nil
 	case ciworkflowresult.FieldEndTime:
 		m.ResetEndTime()
+		return nil
+	case ciworkflowresult.FieldPythonVersion:
+		m.ResetPythonVersion()
+		return nil
+	case ciworkflowresult.FieldPytorchVersion:
+		m.ResetPytorchVersion()
+		return nil
+	case ciworkflowresult.FieldCudaVersion:
+		m.ResetCudaVersion()
+		return nil
+	case ciworkflowresult.FieldComfyRunFlags:
+		m.ResetComfyRunFlags()
+		return nil
+	case ciworkflowresult.FieldAvgVram:
+		m.ResetAvgVram()
+		return nil
+	case ciworkflowresult.FieldPeakVram:
+		m.ResetPeakVram()
+		return nil
+	case ciworkflowresult.FieldJobTriggerUser:
+		m.ResetJobTriggerUser()
+		return nil
+	case ciworkflowresult.FieldMetadata:
+		m.ResetMetadata()
 		return nil
 	}
 	return fmt.Errorf("unknown CIWorkflowResult field %s", name)
@@ -1125,9 +1703,11 @@ func (m *CIWorkflowResultMutation) AddedIDs(name string) []ent.Value {
 			return []ent.Value{*id}
 		}
 	case ciworkflowresult.EdgeStorageFile:
-		if id := m.storage_file; id != nil {
-			return []ent.Value{*id}
+		ids := make([]ent.Value, 0, len(m.storage_file))
+		for id := range m.storage_file {
+			ids = append(ids, id)
 		}
+		return ids
 	}
 	return nil
 }
@@ -1135,12 +1715,23 @@ func (m *CIWorkflowResultMutation) AddedIDs(name string) []ent.Value {
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *CIWorkflowResultMutation) RemovedEdges() []string {
 	edges := make([]string, 0, 2)
+	if m.removedstorage_file != nil {
+		edges = append(edges, ciworkflowresult.EdgeStorageFile)
+	}
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *CIWorkflowResultMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case ciworkflowresult.EdgeStorageFile:
+		ids := make([]ent.Value, 0, len(m.removedstorage_file))
+		for id := range m.removedstorage_file {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
@@ -1175,9 +1766,6 @@ func (m *CIWorkflowResultMutation) ClearEdge(name string) error {
 	case ciworkflowresult.EdgeGitcommit:
 		m.ClearGitcommit()
 		return nil
-	case ciworkflowresult.EdgeStorageFile:
-		m.ClearStorageFile()
-		return nil
 	}
 	return fmt.Errorf("unknown CIWorkflowResult unique edge %s", name)
 }
@@ -1211,6 +1799,7 @@ type GitCommitMutation struct {
 	commit_timestamp *time.Time
 	author           *string
 	timestamp        *time.Time
+	pr_number        *string
 	clearedFields    map[string]struct{}
 	results          map[uuid.UUID]struct{}
 	removedresults   map[uuid.UUID]struct{}
@@ -1674,6 +2263,55 @@ func (m *GitCommitMutation) ResetTimestamp() {
 	delete(m.clearedFields, gitcommit.FieldTimestamp)
 }
 
+// SetPrNumber sets the "pr_number" field.
+func (m *GitCommitMutation) SetPrNumber(s string) {
+	m.pr_number = &s
+}
+
+// PrNumber returns the value of the "pr_number" field in the mutation.
+func (m *GitCommitMutation) PrNumber() (r string, exists bool) {
+	v := m.pr_number
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPrNumber returns the old "pr_number" field's value of the GitCommit entity.
+// If the GitCommit object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GitCommitMutation) OldPrNumber(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPrNumber is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPrNumber requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPrNumber: %w", err)
+	}
+	return oldValue.PrNumber, nil
+}
+
+// ClearPrNumber clears the value of the "pr_number" field.
+func (m *GitCommitMutation) ClearPrNumber() {
+	m.pr_number = nil
+	m.clearedFields[gitcommit.FieldPrNumber] = struct{}{}
+}
+
+// PrNumberCleared returns if the "pr_number" field was cleared in this mutation.
+func (m *GitCommitMutation) PrNumberCleared() bool {
+	_, ok := m.clearedFields[gitcommit.FieldPrNumber]
+	return ok
+}
+
+// ResetPrNumber resets all changes to the "pr_number" field.
+func (m *GitCommitMutation) ResetPrNumber() {
+	m.pr_number = nil
+	delete(m.clearedFields, gitcommit.FieldPrNumber)
+}
+
 // AddResultIDs adds the "results" edge to the CIWorkflowResult entity by ids.
 func (m *GitCommitMutation) AddResultIDs(ids ...uuid.UUID) {
 	if m.results == nil {
@@ -1762,7 +2400,7 @@ func (m *GitCommitMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *GitCommitMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 10)
 	if m.create_time != nil {
 		fields = append(fields, gitcommit.FieldCreateTime)
 	}
@@ -1790,6 +2428,9 @@ func (m *GitCommitMutation) Fields() []string {
 	if m.timestamp != nil {
 		fields = append(fields, gitcommit.FieldTimestamp)
 	}
+	if m.pr_number != nil {
+		fields = append(fields, gitcommit.FieldPrNumber)
+	}
 	return fields
 }
 
@@ -1816,6 +2457,8 @@ func (m *GitCommitMutation) Field(name string) (ent.Value, bool) {
 		return m.Author()
 	case gitcommit.FieldTimestamp:
 		return m.Timestamp()
+	case gitcommit.FieldPrNumber:
+		return m.PrNumber()
 	}
 	return nil, false
 }
@@ -1843,6 +2486,8 @@ func (m *GitCommitMutation) OldField(ctx context.Context, name string) (ent.Valu
 		return m.OldAuthor(ctx)
 	case gitcommit.FieldTimestamp:
 		return m.OldTimestamp(ctx)
+	case gitcommit.FieldPrNumber:
+		return m.OldPrNumber(ctx)
 	}
 	return nil, fmt.Errorf("unknown GitCommit field %s", name)
 }
@@ -1915,6 +2560,13 @@ func (m *GitCommitMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetTimestamp(v)
 		return nil
+	case gitcommit.FieldPrNumber:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPrNumber(v)
+		return nil
 	}
 	return fmt.Errorf("unknown GitCommit field %s", name)
 }
@@ -1951,6 +2603,9 @@ func (m *GitCommitMutation) ClearedFields() []string {
 	if m.FieldCleared(gitcommit.FieldTimestamp) {
 		fields = append(fields, gitcommit.FieldTimestamp)
 	}
+	if m.FieldCleared(gitcommit.FieldPrNumber) {
+		fields = append(fields, gitcommit.FieldPrNumber)
+	}
 	return fields
 }
 
@@ -1970,6 +2625,9 @@ func (m *GitCommitMutation) ClearField(name string) error {
 		return nil
 	case gitcommit.FieldTimestamp:
 		m.ClearTimestamp()
+		return nil
+	case gitcommit.FieldPrNumber:
+		m.ClearPrNumber()
 		return nil
 	}
 	return fmt.Errorf("unknown GitCommit nullable field %s", name)
@@ -2005,6 +2663,9 @@ func (m *GitCommitMutation) ResetField(name string) error {
 		return nil
 	case gitcommit.FieldTimestamp:
 		m.ResetTimestamp()
+		return nil
+	case gitcommit.FieldPrNumber:
+		m.ResetPrNumber()
 		return nil
 	}
 	return fmt.Errorf("unknown GitCommit field %s", name)
@@ -2104,18 +2765,30 @@ type NodeMutation struct {
 	update_time      *time.Time
 	name             *string
 	description      *string
+	category         *string
 	author           *string
 	license          *string
 	repository_url   *string
 	icon_url         *string
 	tags             *[]string
 	appendtags       []string
+	total_install    *int64
+	addtotal_install *int64
+	total_star       *int64
+	addtotal_star    *int64
+	total_review     *int64
+	addtotal_review  *int64
+	status           *schema.NodeStatus
+	status_detail    *string
 	clearedFields    map[string]struct{}
 	publisher        *string
 	clearedpublisher bool
 	versions         map[uuid.UUID]struct{}
 	removedversions  map[uuid.UUID]struct{}
 	clearedversions  bool
+	reviews          map[uuid.UUID]struct{}
+	removedreviews   map[uuid.UUID]struct{}
+	clearedreviews   bool
 	done             bool
 	oldValue         func(context.Context) (*Node, error)
 	predicates       []predicate.Node
@@ -2418,6 +3091,55 @@ func (m *NodeMutation) ResetDescription() {
 	delete(m.clearedFields, node.FieldDescription)
 }
 
+// SetCategory sets the "category" field.
+func (m *NodeMutation) SetCategory(s string) {
+	m.category = &s
+}
+
+// Category returns the value of the "category" field in the mutation.
+func (m *NodeMutation) Category() (r string, exists bool) {
+	v := m.category
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCategory returns the old "category" field's value of the Node entity.
+// If the Node object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NodeMutation) OldCategory(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCategory is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCategory requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCategory: %w", err)
+	}
+	return oldValue.Category, nil
+}
+
+// ClearCategory clears the value of the "category" field.
+func (m *NodeMutation) ClearCategory() {
+	m.category = nil
+	m.clearedFields[node.FieldCategory] = struct{}{}
+}
+
+// CategoryCleared returns if the "category" field was cleared in this mutation.
+func (m *NodeMutation) CategoryCleared() bool {
+	_, ok := m.clearedFields[node.FieldCategory]
+	return ok
+}
+
+// ResetCategory resets all changes to the "category" field.
+func (m *NodeMutation) ResetCategory() {
+	m.category = nil
+	delete(m.clearedFields, node.FieldCategory)
+}
+
 // SetAuthor sets the "author" field.
 func (m *NodeMutation) SetAuthor(s string) {
 	m.author = &s
@@ -2639,6 +3361,259 @@ func (m *NodeMutation) ResetTags() {
 	m.appendtags = nil
 }
 
+// SetTotalInstall sets the "total_install" field.
+func (m *NodeMutation) SetTotalInstall(i int64) {
+	m.total_install = &i
+	m.addtotal_install = nil
+}
+
+// TotalInstall returns the value of the "total_install" field in the mutation.
+func (m *NodeMutation) TotalInstall() (r int64, exists bool) {
+	v := m.total_install
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTotalInstall returns the old "total_install" field's value of the Node entity.
+// If the Node object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NodeMutation) OldTotalInstall(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTotalInstall is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTotalInstall requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTotalInstall: %w", err)
+	}
+	return oldValue.TotalInstall, nil
+}
+
+// AddTotalInstall adds i to the "total_install" field.
+func (m *NodeMutation) AddTotalInstall(i int64) {
+	if m.addtotal_install != nil {
+		*m.addtotal_install += i
+	} else {
+		m.addtotal_install = &i
+	}
+}
+
+// AddedTotalInstall returns the value that was added to the "total_install" field in this mutation.
+func (m *NodeMutation) AddedTotalInstall() (r int64, exists bool) {
+	v := m.addtotal_install
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTotalInstall resets all changes to the "total_install" field.
+func (m *NodeMutation) ResetTotalInstall() {
+	m.total_install = nil
+	m.addtotal_install = nil
+}
+
+// SetTotalStar sets the "total_star" field.
+func (m *NodeMutation) SetTotalStar(i int64) {
+	m.total_star = &i
+	m.addtotal_star = nil
+}
+
+// TotalStar returns the value of the "total_star" field in the mutation.
+func (m *NodeMutation) TotalStar() (r int64, exists bool) {
+	v := m.total_star
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTotalStar returns the old "total_star" field's value of the Node entity.
+// If the Node object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NodeMutation) OldTotalStar(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTotalStar is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTotalStar requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTotalStar: %w", err)
+	}
+	return oldValue.TotalStar, nil
+}
+
+// AddTotalStar adds i to the "total_star" field.
+func (m *NodeMutation) AddTotalStar(i int64) {
+	if m.addtotal_star != nil {
+		*m.addtotal_star += i
+	} else {
+		m.addtotal_star = &i
+	}
+}
+
+// AddedTotalStar returns the value that was added to the "total_star" field in this mutation.
+func (m *NodeMutation) AddedTotalStar() (r int64, exists bool) {
+	v := m.addtotal_star
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTotalStar resets all changes to the "total_star" field.
+func (m *NodeMutation) ResetTotalStar() {
+	m.total_star = nil
+	m.addtotal_star = nil
+}
+
+// SetTotalReview sets the "total_review" field.
+func (m *NodeMutation) SetTotalReview(i int64) {
+	m.total_review = &i
+	m.addtotal_review = nil
+}
+
+// TotalReview returns the value of the "total_review" field in the mutation.
+func (m *NodeMutation) TotalReview() (r int64, exists bool) {
+	v := m.total_review
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTotalReview returns the old "total_review" field's value of the Node entity.
+// If the Node object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NodeMutation) OldTotalReview(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTotalReview is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTotalReview requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTotalReview: %w", err)
+	}
+	return oldValue.TotalReview, nil
+}
+
+// AddTotalReview adds i to the "total_review" field.
+func (m *NodeMutation) AddTotalReview(i int64) {
+	if m.addtotal_review != nil {
+		*m.addtotal_review += i
+	} else {
+		m.addtotal_review = &i
+	}
+}
+
+// AddedTotalReview returns the value that was added to the "total_review" field in this mutation.
+func (m *NodeMutation) AddedTotalReview() (r int64, exists bool) {
+	v := m.addtotal_review
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTotalReview resets all changes to the "total_review" field.
+func (m *NodeMutation) ResetTotalReview() {
+	m.total_review = nil
+	m.addtotal_review = nil
+}
+
+// SetStatus sets the "status" field.
+func (m *NodeMutation) SetStatus(ss schema.NodeStatus) {
+	m.status = &ss
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *NodeMutation) Status() (r schema.NodeStatus, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the Node entity.
+// If the Node object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NodeMutation) OldStatus(ctx context.Context) (v schema.NodeStatus, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *NodeMutation) ResetStatus() {
+	m.status = nil
+}
+
+// SetStatusDetail sets the "status_detail" field.
+func (m *NodeMutation) SetStatusDetail(s string) {
+	m.status_detail = &s
+}
+
+// StatusDetail returns the value of the "status_detail" field in the mutation.
+func (m *NodeMutation) StatusDetail() (r string, exists bool) {
+	v := m.status_detail
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatusDetail returns the old "status_detail" field's value of the Node entity.
+// If the Node object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NodeMutation) OldStatusDetail(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatusDetail is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatusDetail requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatusDetail: %w", err)
+	}
+	return oldValue.StatusDetail, nil
+}
+
+// ClearStatusDetail clears the value of the "status_detail" field.
+func (m *NodeMutation) ClearStatusDetail() {
+	m.status_detail = nil
+	m.clearedFields[node.FieldStatusDetail] = struct{}{}
+}
+
+// StatusDetailCleared returns if the "status_detail" field was cleared in this mutation.
+func (m *NodeMutation) StatusDetailCleared() bool {
+	_, ok := m.clearedFields[node.FieldStatusDetail]
+	return ok
+}
+
+// ResetStatusDetail resets all changes to the "status_detail" field.
+func (m *NodeMutation) ResetStatusDetail() {
+	m.status_detail = nil
+	delete(m.clearedFields, node.FieldStatusDetail)
+}
+
 // ClearPublisher clears the "publisher" edge to the Publisher entity.
 func (m *NodeMutation) ClearPublisher() {
 	m.clearedpublisher = true
@@ -2720,6 +3695,60 @@ func (m *NodeMutation) ResetVersions() {
 	m.removedversions = nil
 }
 
+// AddReviewIDs adds the "reviews" edge to the NodeReview entity by ids.
+func (m *NodeMutation) AddReviewIDs(ids ...uuid.UUID) {
+	if m.reviews == nil {
+		m.reviews = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.reviews[ids[i]] = struct{}{}
+	}
+}
+
+// ClearReviews clears the "reviews" edge to the NodeReview entity.
+func (m *NodeMutation) ClearReviews() {
+	m.clearedreviews = true
+}
+
+// ReviewsCleared reports if the "reviews" edge to the NodeReview entity was cleared.
+func (m *NodeMutation) ReviewsCleared() bool {
+	return m.clearedreviews
+}
+
+// RemoveReviewIDs removes the "reviews" edge to the NodeReview entity by IDs.
+func (m *NodeMutation) RemoveReviewIDs(ids ...uuid.UUID) {
+	if m.removedreviews == nil {
+		m.removedreviews = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.reviews, ids[i])
+		m.removedreviews[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedReviews returns the removed IDs of the "reviews" edge to the NodeReview entity.
+func (m *NodeMutation) RemovedReviewsIDs() (ids []uuid.UUID) {
+	for id := range m.removedreviews {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ReviewsIDs returns the "reviews" edge IDs in the mutation.
+func (m *NodeMutation) ReviewsIDs() (ids []uuid.UUID) {
+	for id := range m.reviews {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetReviews resets all changes to the "reviews" edge.
+func (m *NodeMutation) ResetReviews() {
+	m.reviews = nil
+	m.clearedreviews = false
+	m.removedreviews = nil
+}
+
 // Where appends a list predicates to the NodeMutation builder.
 func (m *NodeMutation) Where(ps ...predicate.Node) {
 	m.predicates = append(m.predicates, ps...)
@@ -2754,7 +3783,7 @@ func (m *NodeMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *NodeMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 16)
 	if m.create_time != nil {
 		fields = append(fields, node.FieldCreateTime)
 	}
@@ -2770,6 +3799,9 @@ func (m *NodeMutation) Fields() []string {
 	if m.description != nil {
 		fields = append(fields, node.FieldDescription)
 	}
+	if m.category != nil {
+		fields = append(fields, node.FieldCategory)
+	}
 	if m.author != nil {
 		fields = append(fields, node.FieldAuthor)
 	}
@@ -2784,6 +3816,21 @@ func (m *NodeMutation) Fields() []string {
 	}
 	if m.tags != nil {
 		fields = append(fields, node.FieldTags)
+	}
+	if m.total_install != nil {
+		fields = append(fields, node.FieldTotalInstall)
+	}
+	if m.total_star != nil {
+		fields = append(fields, node.FieldTotalStar)
+	}
+	if m.total_review != nil {
+		fields = append(fields, node.FieldTotalReview)
+	}
+	if m.status != nil {
+		fields = append(fields, node.FieldStatus)
+	}
+	if m.status_detail != nil {
+		fields = append(fields, node.FieldStatusDetail)
 	}
 	return fields
 }
@@ -2803,6 +3850,8 @@ func (m *NodeMutation) Field(name string) (ent.Value, bool) {
 		return m.Name()
 	case node.FieldDescription:
 		return m.Description()
+	case node.FieldCategory:
+		return m.Category()
 	case node.FieldAuthor:
 		return m.Author()
 	case node.FieldLicense:
@@ -2813,6 +3862,16 @@ func (m *NodeMutation) Field(name string) (ent.Value, bool) {
 		return m.IconURL()
 	case node.FieldTags:
 		return m.Tags()
+	case node.FieldTotalInstall:
+		return m.TotalInstall()
+	case node.FieldTotalStar:
+		return m.TotalStar()
+	case node.FieldTotalReview:
+		return m.TotalReview()
+	case node.FieldStatus:
+		return m.Status()
+	case node.FieldStatusDetail:
+		return m.StatusDetail()
 	}
 	return nil, false
 }
@@ -2832,6 +3891,8 @@ func (m *NodeMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldName(ctx)
 	case node.FieldDescription:
 		return m.OldDescription(ctx)
+	case node.FieldCategory:
+		return m.OldCategory(ctx)
 	case node.FieldAuthor:
 		return m.OldAuthor(ctx)
 	case node.FieldLicense:
@@ -2842,6 +3903,16 @@ func (m *NodeMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldIconURL(ctx)
 	case node.FieldTags:
 		return m.OldTags(ctx)
+	case node.FieldTotalInstall:
+		return m.OldTotalInstall(ctx)
+	case node.FieldTotalStar:
+		return m.OldTotalStar(ctx)
+	case node.FieldTotalReview:
+		return m.OldTotalReview(ctx)
+	case node.FieldStatus:
+		return m.OldStatus(ctx)
+	case node.FieldStatusDetail:
+		return m.OldStatusDetail(ctx)
 	}
 	return nil, fmt.Errorf("unknown Node field %s", name)
 }
@@ -2886,6 +3957,13 @@ func (m *NodeMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetDescription(v)
 		return nil
+	case node.FieldCategory:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCategory(v)
+		return nil
 	case node.FieldAuthor:
 		v, ok := value.(string)
 		if !ok {
@@ -2921,6 +3999,41 @@ func (m *NodeMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetTags(v)
 		return nil
+	case node.FieldTotalInstall:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTotalInstall(v)
+		return nil
+	case node.FieldTotalStar:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTotalStar(v)
+		return nil
+	case node.FieldTotalReview:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTotalReview(v)
+		return nil
+	case node.FieldStatus:
+		v, ok := value.(schema.NodeStatus)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
+		return nil
+	case node.FieldStatusDetail:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatusDetail(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Node field %s", name)
 }
@@ -2928,13 +4041,31 @@ func (m *NodeMutation) SetField(name string, value ent.Value) error {
 // AddedFields returns all numeric fields that were incremented/decremented during
 // this mutation.
 func (m *NodeMutation) AddedFields() []string {
-	return nil
+	var fields []string
+	if m.addtotal_install != nil {
+		fields = append(fields, node.FieldTotalInstall)
+	}
+	if m.addtotal_star != nil {
+		fields = append(fields, node.FieldTotalStar)
+	}
+	if m.addtotal_review != nil {
+		fields = append(fields, node.FieldTotalReview)
+	}
+	return fields
 }
 
 // AddedField returns the numeric value that was incremented/decremented on a field
 // with the given name. The second boolean return value indicates that this field
 // was not set, or was not defined in the schema.
 func (m *NodeMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case node.FieldTotalInstall:
+		return m.AddedTotalInstall()
+	case node.FieldTotalStar:
+		return m.AddedTotalStar()
+	case node.FieldTotalReview:
+		return m.AddedTotalReview()
+	}
 	return nil, false
 }
 
@@ -2943,6 +4074,27 @@ func (m *NodeMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *NodeMutation) AddField(name string, value ent.Value) error {
 	switch name {
+	case node.FieldTotalInstall:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTotalInstall(v)
+		return nil
+	case node.FieldTotalStar:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTotalStar(v)
+		return nil
+	case node.FieldTotalReview:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTotalReview(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Node numeric field %s", name)
 }
@@ -2954,11 +4106,17 @@ func (m *NodeMutation) ClearedFields() []string {
 	if m.FieldCleared(node.FieldDescription) {
 		fields = append(fields, node.FieldDescription)
 	}
+	if m.FieldCleared(node.FieldCategory) {
+		fields = append(fields, node.FieldCategory)
+	}
 	if m.FieldCleared(node.FieldAuthor) {
 		fields = append(fields, node.FieldAuthor)
 	}
 	if m.FieldCleared(node.FieldIconURL) {
 		fields = append(fields, node.FieldIconURL)
+	}
+	if m.FieldCleared(node.FieldStatusDetail) {
+		fields = append(fields, node.FieldStatusDetail)
 	}
 	return fields
 }
@@ -2977,11 +4135,17 @@ func (m *NodeMutation) ClearField(name string) error {
 	case node.FieldDescription:
 		m.ClearDescription()
 		return nil
+	case node.FieldCategory:
+		m.ClearCategory()
+		return nil
 	case node.FieldAuthor:
 		m.ClearAuthor()
 		return nil
 	case node.FieldIconURL:
 		m.ClearIconURL()
+		return nil
+	case node.FieldStatusDetail:
+		m.ClearStatusDetail()
 		return nil
 	}
 	return fmt.Errorf("unknown Node nullable field %s", name)
@@ -3006,6 +4170,9 @@ func (m *NodeMutation) ResetField(name string) error {
 	case node.FieldDescription:
 		m.ResetDescription()
 		return nil
+	case node.FieldCategory:
+		m.ResetCategory()
+		return nil
 	case node.FieldAuthor:
 		m.ResetAuthor()
 		return nil
@@ -3021,18 +4188,36 @@ func (m *NodeMutation) ResetField(name string) error {
 	case node.FieldTags:
 		m.ResetTags()
 		return nil
+	case node.FieldTotalInstall:
+		m.ResetTotalInstall()
+		return nil
+	case node.FieldTotalStar:
+		m.ResetTotalStar()
+		return nil
+	case node.FieldTotalReview:
+		m.ResetTotalReview()
+		return nil
+	case node.FieldStatus:
+		m.ResetStatus()
+		return nil
+	case node.FieldStatusDetail:
+		m.ResetStatusDetail()
+		return nil
 	}
 	return fmt.Errorf("unknown Node field %s", name)
 }
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *NodeMutation) AddedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.publisher != nil {
 		edges = append(edges, node.EdgePublisher)
 	}
 	if m.versions != nil {
 		edges = append(edges, node.EdgeVersions)
+	}
+	if m.reviews != nil {
+		edges = append(edges, node.EdgeReviews)
 	}
 	return edges
 }
@@ -3051,15 +4236,24 @@ func (m *NodeMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case node.EdgeReviews:
+		ids := make([]ent.Value, 0, len(m.reviews))
+		for id := range m.reviews {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *NodeMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.removedversions != nil {
 		edges = append(edges, node.EdgeVersions)
+	}
+	if m.removedreviews != nil {
+		edges = append(edges, node.EdgeReviews)
 	}
 	return edges
 }
@@ -3074,18 +4268,27 @@ func (m *NodeMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case node.EdgeReviews:
+		ids := make([]ent.Value, 0, len(m.removedreviews))
+		for id := range m.removedreviews {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *NodeMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.clearedpublisher {
 		edges = append(edges, node.EdgePublisher)
 	}
 	if m.clearedversions {
 		edges = append(edges, node.EdgeVersions)
+	}
+	if m.clearedreviews {
+		edges = append(edges, node.EdgeReviews)
 	}
 	return edges
 }
@@ -3098,6 +4301,8 @@ func (m *NodeMutation) EdgeCleared(name string) bool {
 		return m.clearedpublisher
 	case node.EdgeVersions:
 		return m.clearedversions
+	case node.EdgeReviews:
+		return m.clearedreviews
 	}
 	return false
 }
@@ -3123,8 +4328,587 @@ func (m *NodeMutation) ResetEdge(name string) error {
 	case node.EdgeVersions:
 		m.ResetVersions()
 		return nil
+	case node.EdgeReviews:
+		m.ResetReviews()
+		return nil
 	}
 	return fmt.Errorf("unknown Node edge %s", name)
+}
+
+// NodeReviewMutation represents an operation that mutates the NodeReview nodes in the graph.
+type NodeReviewMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *uuid.UUID
+	star          *int
+	addstar       *int
+	clearedFields map[string]struct{}
+	user          *string
+	cleareduser   bool
+	node          *string
+	clearednode   bool
+	done          bool
+	oldValue      func(context.Context) (*NodeReview, error)
+	predicates    []predicate.NodeReview
+}
+
+var _ ent.Mutation = (*NodeReviewMutation)(nil)
+
+// nodereviewOption allows management of the mutation configuration using functional options.
+type nodereviewOption func(*NodeReviewMutation)
+
+// newNodeReviewMutation creates new mutation for the NodeReview entity.
+func newNodeReviewMutation(c config, op Op, opts ...nodereviewOption) *NodeReviewMutation {
+	m := &NodeReviewMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeNodeReview,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withNodeReviewID sets the ID field of the mutation.
+func withNodeReviewID(id uuid.UUID) nodereviewOption {
+	return func(m *NodeReviewMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *NodeReview
+		)
+		m.oldValue = func(ctx context.Context) (*NodeReview, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().NodeReview.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withNodeReview sets the old NodeReview of the mutation.
+func withNodeReview(node *NodeReview) nodereviewOption {
+	return func(m *NodeReviewMutation) {
+		m.oldValue = func(context.Context) (*NodeReview, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m NodeReviewMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m NodeReviewMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of NodeReview entities.
+func (m *NodeReviewMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *NodeReviewMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *NodeReviewMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().NodeReview.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetNodeID sets the "node_id" field.
+func (m *NodeReviewMutation) SetNodeID(s string) {
+	m.node = &s
+}
+
+// NodeID returns the value of the "node_id" field in the mutation.
+func (m *NodeReviewMutation) NodeID() (r string, exists bool) {
+	v := m.node
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldNodeID returns the old "node_id" field's value of the NodeReview entity.
+// If the NodeReview object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NodeReviewMutation) OldNodeID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldNodeID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldNodeID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldNodeID: %w", err)
+	}
+	return oldValue.NodeID, nil
+}
+
+// ResetNodeID resets all changes to the "node_id" field.
+func (m *NodeReviewMutation) ResetNodeID() {
+	m.node = nil
+}
+
+// SetUserID sets the "user_id" field.
+func (m *NodeReviewMutation) SetUserID(s string) {
+	m.user = &s
+}
+
+// UserID returns the value of the "user_id" field in the mutation.
+func (m *NodeReviewMutation) UserID() (r string, exists bool) {
+	v := m.user
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserID returns the old "user_id" field's value of the NodeReview entity.
+// If the NodeReview object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NodeReviewMutation) OldUserID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUserID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
+	}
+	return oldValue.UserID, nil
+}
+
+// ResetUserID resets all changes to the "user_id" field.
+func (m *NodeReviewMutation) ResetUserID() {
+	m.user = nil
+}
+
+// SetStar sets the "star" field.
+func (m *NodeReviewMutation) SetStar(i int) {
+	m.star = &i
+	m.addstar = nil
+}
+
+// Star returns the value of the "star" field in the mutation.
+func (m *NodeReviewMutation) Star() (r int, exists bool) {
+	v := m.star
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStar returns the old "star" field's value of the NodeReview entity.
+// If the NodeReview object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NodeReviewMutation) OldStar(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStar is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStar requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStar: %w", err)
+	}
+	return oldValue.Star, nil
+}
+
+// AddStar adds i to the "star" field.
+func (m *NodeReviewMutation) AddStar(i int) {
+	if m.addstar != nil {
+		*m.addstar += i
+	} else {
+		m.addstar = &i
+	}
+}
+
+// AddedStar returns the value that was added to the "star" field in this mutation.
+func (m *NodeReviewMutation) AddedStar() (r int, exists bool) {
+	v := m.addstar
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetStar resets all changes to the "star" field.
+func (m *NodeReviewMutation) ResetStar() {
+	m.star = nil
+	m.addstar = nil
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (m *NodeReviewMutation) ClearUser() {
+	m.cleareduser = true
+	m.clearedFields[nodereview.FieldUserID] = struct{}{}
+}
+
+// UserCleared reports if the "user" edge to the User entity was cleared.
+func (m *NodeReviewMutation) UserCleared() bool {
+	return m.cleareduser
+}
+
+// UserIDs returns the "user" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// UserID instead. It exists only for internal usage by the builders.
+func (m *NodeReviewMutation) UserIDs() (ids []string) {
+	if id := m.user; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetUser resets all changes to the "user" edge.
+func (m *NodeReviewMutation) ResetUser() {
+	m.user = nil
+	m.cleareduser = false
+}
+
+// ClearNode clears the "node" edge to the Node entity.
+func (m *NodeReviewMutation) ClearNode() {
+	m.clearednode = true
+	m.clearedFields[nodereview.FieldNodeID] = struct{}{}
+}
+
+// NodeCleared reports if the "node" edge to the Node entity was cleared.
+func (m *NodeReviewMutation) NodeCleared() bool {
+	return m.clearednode
+}
+
+// NodeIDs returns the "node" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// NodeID instead. It exists only for internal usage by the builders.
+func (m *NodeReviewMutation) NodeIDs() (ids []string) {
+	if id := m.node; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetNode resets all changes to the "node" edge.
+func (m *NodeReviewMutation) ResetNode() {
+	m.node = nil
+	m.clearednode = false
+}
+
+// Where appends a list predicates to the NodeReviewMutation builder.
+func (m *NodeReviewMutation) Where(ps ...predicate.NodeReview) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the NodeReviewMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *NodeReviewMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.NodeReview, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *NodeReviewMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *NodeReviewMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (NodeReview).
+func (m *NodeReviewMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *NodeReviewMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.node != nil {
+		fields = append(fields, nodereview.FieldNodeID)
+	}
+	if m.user != nil {
+		fields = append(fields, nodereview.FieldUserID)
+	}
+	if m.star != nil {
+		fields = append(fields, nodereview.FieldStar)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *NodeReviewMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case nodereview.FieldNodeID:
+		return m.NodeID()
+	case nodereview.FieldUserID:
+		return m.UserID()
+	case nodereview.FieldStar:
+		return m.Star()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *NodeReviewMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case nodereview.FieldNodeID:
+		return m.OldNodeID(ctx)
+	case nodereview.FieldUserID:
+		return m.OldUserID(ctx)
+	case nodereview.FieldStar:
+		return m.OldStar(ctx)
+	}
+	return nil, fmt.Errorf("unknown NodeReview field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *NodeReviewMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case nodereview.FieldNodeID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetNodeID(v)
+		return nil
+	case nodereview.FieldUserID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserID(v)
+		return nil
+	case nodereview.FieldStar:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStar(v)
+		return nil
+	}
+	return fmt.Errorf("unknown NodeReview field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *NodeReviewMutation) AddedFields() []string {
+	var fields []string
+	if m.addstar != nil {
+		fields = append(fields, nodereview.FieldStar)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *NodeReviewMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case nodereview.FieldStar:
+		return m.AddedStar()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *NodeReviewMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case nodereview.FieldStar:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddStar(v)
+		return nil
+	}
+	return fmt.Errorf("unknown NodeReview numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *NodeReviewMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *NodeReviewMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *NodeReviewMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown NodeReview nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *NodeReviewMutation) ResetField(name string) error {
+	switch name {
+	case nodereview.FieldNodeID:
+		m.ResetNodeID()
+		return nil
+	case nodereview.FieldUserID:
+		m.ResetUserID()
+		return nil
+	case nodereview.FieldStar:
+		m.ResetStar()
+		return nil
+	}
+	return fmt.Errorf("unknown NodeReview field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *NodeReviewMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.user != nil {
+		edges = append(edges, nodereview.EdgeUser)
+	}
+	if m.node != nil {
+		edges = append(edges, nodereview.EdgeNode)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *NodeReviewMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case nodereview.EdgeUser:
+		if id := m.user; id != nil {
+			return []ent.Value{*id}
+		}
+	case nodereview.EdgeNode:
+		if id := m.node; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *NodeReviewMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *NodeReviewMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *NodeReviewMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.cleareduser {
+		edges = append(edges, nodereview.EdgeUser)
+	}
+	if m.clearednode {
+		edges = append(edges, nodereview.EdgeNode)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *NodeReviewMutation) EdgeCleared(name string) bool {
+	switch name {
+	case nodereview.EdgeUser:
+		return m.cleareduser
+	case nodereview.EdgeNode:
+		return m.clearednode
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *NodeReviewMutation) ClearEdge(name string) error {
+	switch name {
+	case nodereview.EdgeUser:
+		m.ClearUser()
+		return nil
+	case nodereview.EdgeNode:
+		m.ClearNode()
+		return nil
+	}
+	return fmt.Errorf("unknown NodeReview unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *NodeReviewMutation) ResetEdge(name string) error {
+	switch name {
+	case nodereview.EdgeUser:
+		m.ResetUser()
+		return nil
+	case nodereview.EdgeNode:
+		m.ResetNode()
+		return nil
+	}
+	return fmt.Errorf("unknown NodeReview edge %s", name)
 }
 
 // NodeVersionMutation represents an operation that mutates the NodeVersion nodes in the graph.
@@ -3140,6 +4924,8 @@ type NodeVersionMutation struct {
 	pip_dependencies       *[]string
 	appendpip_dependencies []string
 	deprecated             *bool
+	status                 *schema.NodeVersionStatus
+	status_reason          *string
 	clearedFields          map[string]struct{}
 	node                   *string
 	clearednode            bool
@@ -3534,6 +5320,78 @@ func (m *NodeVersionMutation) ResetDeprecated() {
 	m.deprecated = nil
 }
 
+// SetStatus sets the "status" field.
+func (m *NodeVersionMutation) SetStatus(svs schema.NodeVersionStatus) {
+	m.status = &svs
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *NodeVersionMutation) Status() (r schema.NodeVersionStatus, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the NodeVersion entity.
+// If the NodeVersion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NodeVersionMutation) OldStatus(ctx context.Context) (v schema.NodeVersionStatus, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *NodeVersionMutation) ResetStatus() {
+	m.status = nil
+}
+
+// SetStatusReason sets the "status_reason" field.
+func (m *NodeVersionMutation) SetStatusReason(s string) {
+	m.status_reason = &s
+}
+
+// StatusReason returns the value of the "status_reason" field in the mutation.
+func (m *NodeVersionMutation) StatusReason() (r string, exists bool) {
+	v := m.status_reason
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatusReason returns the old "status_reason" field's value of the NodeVersion entity.
+// If the NodeVersion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NodeVersionMutation) OldStatusReason(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatusReason is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatusReason requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatusReason: %w", err)
+	}
+	return oldValue.StatusReason, nil
+}
+
+// ResetStatusReason resets all changes to the "status_reason" field.
+func (m *NodeVersionMutation) ResetStatusReason() {
+	m.status_reason = nil
+}
+
 // ClearNode clears the "node" edge to the Node entity.
 func (m *NodeVersionMutation) ClearNode() {
 	m.clearednode = true
@@ -3634,7 +5492,7 @@ func (m *NodeVersionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *NodeVersionMutation) Fields() []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 9)
 	if m.create_time != nil {
 		fields = append(fields, nodeversion.FieldCreateTime)
 	}
@@ -3655,6 +5513,12 @@ func (m *NodeVersionMutation) Fields() []string {
 	}
 	if m.deprecated != nil {
 		fields = append(fields, nodeversion.FieldDeprecated)
+	}
+	if m.status != nil {
+		fields = append(fields, nodeversion.FieldStatus)
+	}
+	if m.status_reason != nil {
+		fields = append(fields, nodeversion.FieldStatusReason)
 	}
 	return fields
 }
@@ -3678,6 +5542,10 @@ func (m *NodeVersionMutation) Field(name string) (ent.Value, bool) {
 		return m.PipDependencies()
 	case nodeversion.FieldDeprecated:
 		return m.Deprecated()
+	case nodeversion.FieldStatus:
+		return m.Status()
+	case nodeversion.FieldStatusReason:
+		return m.StatusReason()
 	}
 	return nil, false
 }
@@ -3701,6 +5569,10 @@ func (m *NodeVersionMutation) OldField(ctx context.Context, name string) (ent.Va
 		return m.OldPipDependencies(ctx)
 	case nodeversion.FieldDeprecated:
 		return m.OldDeprecated(ctx)
+	case nodeversion.FieldStatus:
+		return m.OldStatus(ctx)
+	case nodeversion.FieldStatusReason:
+		return m.OldStatusReason(ctx)
 	}
 	return nil, fmt.Errorf("unknown NodeVersion field %s", name)
 }
@@ -3758,6 +5630,20 @@ func (m *NodeVersionMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetDeprecated(v)
+		return nil
+	case nodeversion.FieldStatus:
+		v, ok := value.(schema.NodeVersionStatus)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
+		return nil
+	case nodeversion.FieldStatusReason:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatusReason(v)
 		return nil
 	}
 	return fmt.Errorf("unknown NodeVersion field %s", name)
@@ -3837,6 +5723,12 @@ func (m *NodeVersionMutation) ResetField(name string) error {
 		return nil
 	case nodeversion.FieldDeprecated:
 		m.ResetDeprecated()
+		return nil
+	case nodeversion.FieldStatus:
+		m.ResetStatus()
+		return nil
+	case nodeversion.FieldStatusReason:
+		m.ResetStatusReason()
 		return nil
 	}
 	return fmt.Errorf("unknown NodeVersion field %s", name)
@@ -4604,6 +6496,7 @@ type PublisherMutation struct {
 	support_email                 *string
 	source_code_repo              *string
 	logo_url                      *string
+	status                        *schema.PublisherStatusType
 	clearedFields                 map[string]struct{}
 	publisher_permissions         map[int]struct{}
 	removedpublisher_permissions  map[int]struct{}
@@ -5076,6 +6969,42 @@ func (m *PublisherMutation) ResetLogoURL() {
 	delete(m.clearedFields, publisher.FieldLogoURL)
 }
 
+// SetStatus sets the "status" field.
+func (m *PublisherMutation) SetStatus(sst schema.PublisherStatusType) {
+	m.status = &sst
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *PublisherMutation) Status() (r schema.PublisherStatusType, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the Publisher entity.
+// If the Publisher object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PublisherMutation) OldStatus(ctx context.Context) (v schema.PublisherStatusType, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *PublisherMutation) ResetStatus() {
+	m.status = nil
+}
+
 // AddPublisherPermissionIDs adds the "publisher_permissions" edge to the PublisherPermission entity by ids.
 func (m *PublisherMutation) AddPublisherPermissionIDs(ids ...int) {
 	if m.publisher_permissions == nil {
@@ -5272,7 +7201,7 @@ func (m *PublisherMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *PublisherMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 9)
 	if m.create_time != nil {
 		fields = append(fields, publisher.FieldCreateTime)
 	}
@@ -5296,6 +7225,9 @@ func (m *PublisherMutation) Fields() []string {
 	}
 	if m.logo_url != nil {
 		fields = append(fields, publisher.FieldLogoURL)
+	}
+	if m.status != nil {
+		fields = append(fields, publisher.FieldStatus)
 	}
 	return fields
 }
@@ -5321,6 +7253,8 @@ func (m *PublisherMutation) Field(name string) (ent.Value, bool) {
 		return m.SourceCodeRepo()
 	case publisher.FieldLogoURL:
 		return m.LogoURL()
+	case publisher.FieldStatus:
+		return m.Status()
 	}
 	return nil, false
 }
@@ -5346,6 +7280,8 @@ func (m *PublisherMutation) OldField(ctx context.Context, name string) (ent.Valu
 		return m.OldSourceCodeRepo(ctx)
 	case publisher.FieldLogoURL:
 		return m.OldLogoURL(ctx)
+	case publisher.FieldStatus:
+		return m.OldStatus(ctx)
 	}
 	return nil, fmt.Errorf("unknown Publisher field %s", name)
 }
@@ -5410,6 +7346,13 @@ func (m *PublisherMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetLogoURL(v)
+		return nil
+	case publisher.FieldStatus:
+		v, ok := value.(schema.PublisherStatusType)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Publisher field %s", name)
@@ -5516,6 +7459,9 @@ func (m *PublisherMutation) ResetField(name string) error {
 		return nil
 	case publisher.FieldLogoURL:
 		m.ResetLogoURL()
+		return nil
+	case publisher.FieldStatus:
+		m.ResetStatus()
 		return nil
 	}
 	return fmt.Errorf("unknown Publisher field %s", name)
@@ -6900,10 +8846,14 @@ type UserMutation struct {
 	name                         *string
 	is_approved                  *bool
 	is_admin                     *bool
+	status                       *schema.UserStatusType
 	clearedFields                map[string]struct{}
 	publisher_permissions        map[int]struct{}
 	removedpublisher_permissions map[int]struct{}
 	clearedpublisher_permissions bool
+	reviews                      map[uuid.UUID]struct{}
+	removedreviews               map[uuid.UUID]struct{}
+	clearedreviews               bool
 	done                         bool
 	oldValue                     func(context.Context) (*User, error)
 	predicates                   []predicate.User
@@ -7255,6 +9205,42 @@ func (m *UserMutation) ResetIsAdmin() {
 	m.is_admin = nil
 }
 
+// SetStatus sets the "status" field.
+func (m *UserMutation) SetStatus(sst schema.UserStatusType) {
+	m.status = &sst
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *UserMutation) Status() (r schema.UserStatusType, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldStatus(ctx context.Context) (v schema.UserStatusType, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *UserMutation) ResetStatus() {
+	m.status = nil
+}
+
 // AddPublisherPermissionIDs adds the "publisher_permissions" edge to the PublisherPermission entity by ids.
 func (m *UserMutation) AddPublisherPermissionIDs(ids ...int) {
 	if m.publisher_permissions == nil {
@@ -7309,6 +9295,60 @@ func (m *UserMutation) ResetPublisherPermissions() {
 	m.removedpublisher_permissions = nil
 }
 
+// AddReviewIDs adds the "reviews" edge to the NodeReview entity by ids.
+func (m *UserMutation) AddReviewIDs(ids ...uuid.UUID) {
+	if m.reviews == nil {
+		m.reviews = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.reviews[ids[i]] = struct{}{}
+	}
+}
+
+// ClearReviews clears the "reviews" edge to the NodeReview entity.
+func (m *UserMutation) ClearReviews() {
+	m.clearedreviews = true
+}
+
+// ReviewsCleared reports if the "reviews" edge to the NodeReview entity was cleared.
+func (m *UserMutation) ReviewsCleared() bool {
+	return m.clearedreviews
+}
+
+// RemoveReviewIDs removes the "reviews" edge to the NodeReview entity by IDs.
+func (m *UserMutation) RemoveReviewIDs(ids ...uuid.UUID) {
+	if m.removedreviews == nil {
+		m.removedreviews = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.reviews, ids[i])
+		m.removedreviews[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedReviews returns the removed IDs of the "reviews" edge to the NodeReview entity.
+func (m *UserMutation) RemovedReviewsIDs() (ids []uuid.UUID) {
+	for id := range m.removedreviews {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ReviewsIDs returns the "reviews" edge IDs in the mutation.
+func (m *UserMutation) ReviewsIDs() (ids []uuid.UUID) {
+	for id := range m.reviews {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetReviews resets all changes to the "reviews" edge.
+func (m *UserMutation) ResetReviews() {
+	m.reviews = nil
+	m.clearedreviews = false
+	m.removedreviews = nil
+}
+
 // Where appends a list predicates to the UserMutation builder.
 func (m *UserMutation) Where(ps ...predicate.User) {
 	m.predicates = append(m.predicates, ps...)
@@ -7343,7 +9383,7 @@ func (m *UserMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserMutation) Fields() []string {
-	fields := make([]string, 0, 6)
+	fields := make([]string, 0, 7)
 	if m.create_time != nil {
 		fields = append(fields, user.FieldCreateTime)
 	}
@@ -7361,6 +9401,9 @@ func (m *UserMutation) Fields() []string {
 	}
 	if m.is_admin != nil {
 		fields = append(fields, user.FieldIsAdmin)
+	}
+	if m.status != nil {
+		fields = append(fields, user.FieldStatus)
 	}
 	return fields
 }
@@ -7382,6 +9425,8 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 		return m.IsApproved()
 	case user.FieldIsAdmin:
 		return m.IsAdmin()
+	case user.FieldStatus:
+		return m.Status()
 	}
 	return nil, false
 }
@@ -7403,6 +9448,8 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldIsApproved(ctx)
 	case user.FieldIsAdmin:
 		return m.OldIsAdmin(ctx)
+	case user.FieldStatus:
+		return m.OldStatus(ctx)
 	}
 	return nil, fmt.Errorf("unknown User field %s", name)
 }
@@ -7453,6 +9500,13 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetIsAdmin(v)
+		return nil
+	case user.FieldStatus:
+		v, ok := value.(schema.UserStatusType)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
 		return nil
 	}
 	return fmt.Errorf("unknown User field %s", name)
@@ -7536,15 +9590,21 @@ func (m *UserMutation) ResetField(name string) error {
 	case user.FieldIsAdmin:
 		m.ResetIsAdmin()
 		return nil
+	case user.FieldStatus:
+		m.ResetStatus()
+		return nil
 	}
 	return fmt.Errorf("unknown User field %s", name)
 }
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *UserMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.publisher_permissions != nil {
 		edges = append(edges, user.EdgePublisherPermissions)
+	}
+	if m.reviews != nil {
+		edges = append(edges, user.EdgeReviews)
 	}
 	return edges
 }
@@ -7559,15 +9619,24 @@ func (m *UserMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeReviews:
+		ids := make([]ent.Value, 0, len(m.reviews))
+		for id := range m.reviews {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *UserMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.removedpublisher_permissions != nil {
 		edges = append(edges, user.EdgePublisherPermissions)
+	}
+	if m.removedreviews != nil {
+		edges = append(edges, user.EdgeReviews)
 	}
 	return edges
 }
@@ -7582,15 +9651,24 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeReviews:
+		ids := make([]ent.Value, 0, len(m.removedreviews))
+		for id := range m.removedreviews {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *UserMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.clearedpublisher_permissions {
 		edges = append(edges, user.EdgePublisherPermissions)
+	}
+	if m.clearedreviews {
+		edges = append(edges, user.EdgeReviews)
 	}
 	return edges
 }
@@ -7601,6 +9679,8 @@ func (m *UserMutation) EdgeCleared(name string) bool {
 	switch name {
 	case user.EdgePublisherPermissions:
 		return m.clearedpublisher_permissions
+	case user.EdgeReviews:
+		return m.clearedreviews
 	}
 	return false
 }
@@ -7619,6 +9699,9 @@ func (m *UserMutation) ResetEdge(name string) error {
 	switch name {
 	case user.EdgePublisherPermissions:
 		m.ResetPublisherPermissions()
+		return nil
+	case user.EdgeReviews:
+		m.ResetReviews()
 		return nil
 	}
 	return fmt.Errorf("unknown User edge %s", name)

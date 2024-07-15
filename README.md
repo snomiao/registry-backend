@@ -1,12 +1,23 @@
 # registry-backend
 
-The first service to receive API requests
+The backend API server for [Comfy Registry](https://comfyregistry.org) and [Comfy CI/CD](https://comfyci.org).
 
-## Local Dev
+Join us at our discord: [https://discord.gg/comfycontrib](https://discord.gg/comfycontrib)
+
+Registry React Frontend [Github](https://github.com/Comfy-Org/registry-web)
+Registry CLI [Github](https://github.com/yoland68/comfy-cli)
+
+## Local Development
 
 ### Golang
 
-https://go.dev/doc/install
+Install Golang:
+
+<https://go.dev/doc/install>
+
+Install go packages
+
+`go get`
 
 ### Supabase
 
@@ -30,9 +41,6 @@ These are needed for authenticating Firebase JWT token auth + calling other GCP 
 
 When testing login with registry, use this:
 `gcloud config set project dreamboothy-dev`
-
-When testing workspace / VM creation, use this:
-`gcloud config set project dreamboothy`
 
 `gcloud auth application-default login`
 
@@ -60,7 +68,18 @@ This should search all directories and run go generate. This will run all the co
 
 Or manually run:
 
-`go run -mod=mod entgo.io/ent/cmd/ent generate --feature sql/upsert --feature sql/lock ./ent/schema`
+`go run -mod=mod entgo.io/ent/cmd/ent generate --feature sql/upsert --feature sql/lock --feature sql/modifier ./ent/schema`
+
+### Generate Migration Files
+
+Run this command to generate migration files needed for staging/prod database schema changes:
+
+```shell
+atlas migrate diff migration \
+  --dir "file://ent/migrate/migrations" \
+  --to "ent://ent/schema" \
+  --dev-url "docker://postgres/15/test?search_path=public"
+```
 
 ## API Spec Change (openapi.yml)
 
@@ -74,7 +93,7 @@ Or manually run:
 
 `export PATH="$PATH:$HOME/bin:$HOME/go/bin"`
 
-https://github.com/deepmap/oapi-codegen/issues/795
+<https://github.com/deepmap/oapi-codegen/issues/795>
 
 `oapi-codegen --config drip/codegen.yaml openapi.yml`
 
@@ -82,11 +101,19 @@ https://github.com/deepmap/oapi-codegen/issues/795
 
 Here are some common errors and how to resolve them.
 
+### Security Scan
+
+If you are calling the `security-scan` endpoint, you need to add the endpoint url to `docker-compose.yml` and then make sure you have the correct permissions to call that function.
+
+Check the `security-scan` Cloud Function repo for instructions on how to do that with `gcloud`.
+
+For non Comfy-Org contributors, you can use your own hosted function or just avoid touching this part. We keep the security scan code private to avoid exploiters taking advantage of it.
+
 ### Firebase Token Errors
 
 Usually in localdev, we use dreamboothy-dev Firebase project for authentication. This conflicts with our machine creation logic because all of those machine images are in dreamboothy. TODO(robinhuang): Figure out a solution for this. Either we replicate things in dreamboothy-dev, or we pass project information separately when creating machine images.
 
-### Creating VM instance error:
+### Creating VM instance error
 
 **Example:**
 
@@ -131,23 +158,23 @@ In order to bypass authentication error, you can add make the following changes 
 package drip_middleware
 
 func FirebaseMiddleware(entClient *ent.Client) echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(ctx echo.Context) error {
-			userDetails := &UserDetails{
-				ID:    "test-james-token-id",
-				Email: "test-james-email@gmail.com",
-				Name:  "James",
-			}
+ return func(next echo.HandlerFunc) echo.HandlerFunc {
+  return func(ctx echo.Context) error {
+   userDetails := &UserDetails{
+    ID:    "test-james-token-id",
+    Email: "test-james-email@gmail.com",
+    Name:  "James",
+   }
 
-			authdCtx := context.WithValue(ctx.Request().Context(), UserContextKey, userDetails)
-			ctx.SetRequest(ctx.Request().WithContext(authdCtx))
-			newUserError := db.UpsertUser(ctx.Request().Context(), entClient, userDetails.ID, userDetails.Email, userDetails.Name)
-			if newUserError != nil {
-				log.Ctx(ctx).Info().Ctx(ctx.Request().Context()).Err(newUserError).Msg("error User upserted successfully.")
-			}
-			return next(ctx)
-		}
-	}
+   authdCtx := context.WithValue(ctx.Request().Context(), UserContextKey, userDetails)
+   ctx.SetRequest(ctx.Request().WithContext(authdCtx))
+   newUserError := db.UpsertUser(ctx.Request().Context(), entClient, userDetails.ID, userDetails.Email, userDetails.Name)
+   if newUserError != nil {
+    log.Ctx(ctx).Info().Ctx(ctx.Request().Context()).Err(newUserError).Msg("error User upserted successfully.")
+   }
+   return next(ctx)
+  }
+ }
 }
 
 ```

@@ -8,6 +8,7 @@ import (
 	"registry-backend/ent/schema"
 	"registry-backend/mapper"
 	drip_services "registry-backend/services/registry"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/mixpanel/mixpanel-go"
@@ -181,31 +182,6 @@ func (s *DripStrictServerImplementation) GetPublisher(
 func (s *DripStrictServerImplementation) UpdatePublisher(
 	ctx context.Context, request drip.UpdatePublisherRequestObject) (drip.UpdatePublisherResponseObject, error) {
 	log.Ctx(ctx).Info().Msgf("UpdatePublisher called with publisher ID: %s", request.PublisherId)
-	userId, err := mapper.GetUserIDFromContext(ctx)
-	if err != nil {
-		log.Ctx(ctx).Error().Msgf("Failed to get user ID from context w/ err: %v", err)
-		return drip.UpdatePublisher400JSONResponse{Message: "Invalid user ID"}, err
-	}
-
-	log.Ctx(ctx).Info().Msgf("Checking if user ID %s has permission to update publisher ID %s", userId, request.PublisherId)
-	err = s.RegistryService.AssertPublisherPermissions(
-		ctx, s.Client, request.PublisherId, userId, []schema.PublisherPermissionType{schema.PublisherPermissionTypeOwner})
-	switch {
-	case ent.IsNotFound(err):
-		log.Ctx(ctx).Info().Msgf("Publisher with ID %s not found", request.PublisherId)
-		return drip.UpdatePublisher404JSONResponse{Message: "Publisher not found"}, nil
-
-	case drip_services.IsPermissionError(err):
-		log.Ctx(ctx).Error().Msgf("Permission denied for user ID %s on "+
-			"publisher ID %s w/ err: %v", userId, request.PublisherId, err)
-		return drip.UpdatePublisher401Response{}, err
-
-	case err != nil:
-		log.Ctx(ctx).Error().Msgf(
-			"Failed to assert publisher permission %s w/ err: %v", request.PublisherId, err)
-		return drip.UpdatePublisher500JSONResponse{
-			Message: "Failed to assert publisher permission", Error: err.Error()}, err
-	}
 
 	log.Ctx(ctx).Info().Msgf("Updating publisher with ID %s", request.PublisherId)
 	updateOne := mapper.ApiUpdatePublisherToUpdateFields(request.PublisherId, request.Body, s.Client)
@@ -222,34 +198,13 @@ func (s *DripStrictServerImplementation) UpdatePublisher(
 func (s *DripStrictServerImplementation) CreateNode(
 	ctx context.Context, request drip.CreateNodeRequestObject) (drip.CreateNodeResponseObject, error) {
 	log.Ctx(ctx).Info().Msgf("CreateNode called with publisher ID: %s", request.PublisherId)
-	userId, err := mapper.GetUserIDFromContext(ctx)
-	if err != nil {
-		log.Ctx(ctx).Error().Msgf("Failed to get user ID from context w/ err: %v", err)
-		return drip.CreateNode400JSONResponse{Message: "Invalid user ID"}, err
-	}
-
-	log.Ctx(ctx).Info().Msgf(
-		"Checking if user ID %s has permission to create node for publisher ID %s", userId, request.PublisherId)
-	err = s.RegistryService.AssertPublisherPermissions(
-		ctx, s.Client, request.PublisherId, userId, []schema.PublisherPermissionType{schema.PublisherPermissionTypeOwner})
-	switch {
-	case ent.IsNotFound(err):
-		log.Ctx(ctx).Info().Msgf("Publisher with ID %s not found", request.PublisherId)
-		return drip.CreateNode400JSONResponse{Message: "Publisher not found"}, nil
-
-	case drip_services.IsPermissionError(err):
-		log.Ctx(ctx).Error().Msgf(
-			"Permission denied for user ID %s on publisher ID %s w/ err: %v", userId, request.PublisherId, err)
-		return drip.CreateNode401Response{}, err
-
-	case err != nil:
-		log.Ctx(ctx).Error().Msgf(
-			"Failed to assert publisher permission %s w/ err: %v", request.PublisherId, err)
-		return drip.CreateNode500JSONResponse{
-			Message: "Failed to assert publisher permission", Error: err.Error()}, err
-	}
 
 	node, err := s.RegistryService.CreateNode(ctx, s.Client, request.PublisherId, request.Body)
+	if mapper.IsErrorBadRequest(err) || ent.IsConstraintError(err) {
+		log.Ctx(ctx).Error().Msgf(
+			"Failed to create node for publisher ID %s w/ err: %v", request.PublisherId, err)
+		return drip.CreateNode400JSONResponse{Message: "The node already exists", Error: err.Error()}, err
+	}
 	if err != nil {
 		log.Ctx(ctx).Error().Msgf("Failed to create node for publisher ID %s w/ err: %v", request.PublisherId, err)
 		return drip.CreateNode500JSONResponse{Message: "Failed to create node", Error: err.Error()}, err
@@ -290,6 +245,7 @@ func (s *DripStrictServerImplementation) ListNodesForPublisher(
 
 func (s *DripStrictServerImplementation) ListAllNodes(
 	ctx context.Context, request drip.ListAllNodesRequestObject) (drip.ListAllNodesResponseObject, error) {
+
 	log.Ctx(ctx).Info().Msg("ListAllNodes request received")
 
 	// Set default values for pagination parameters
@@ -302,13 +258,20 @@ func (s *DripStrictServerImplementation) ListAllNodes(
 		limit = *request.Params.Limit
 	}
 
+	// Initialize the node filter
+	filter := &drip_services.NodeFilter{}
+	if request.Params.IncludeBanned != nil {
+		filter.IncludeBanned = *request.Params.IncludeBanned
+	}
+
 	// List nodes from the registry service
-	nodeResults, err := s.RegistryService.ListNodes(ctx, s.Client, page, limit, &drip_services.NodeFilter{})
+	nodeResults, err := s.RegistryService.ListNodes(ctx, s.Client, page, limit, filter)
 	if err != nil {
 		log.Ctx(ctx).Error().Msgf("Failed to list nodes w/ err: %v", err)
 		return drip.ListAllNodes500JSONResponse{Message: "Failed to list nodes", Error: err.Error()}, err
 	}
 
+	// Handle case when no nodes are found
 	if len(nodeResults.Nodes) == 0 {
 		log.Ctx(ctx).Info().Msg("No nodes found")
 		return drip.ListAllNodes200JSONResponse{
@@ -320,13 +283,17 @@ func (s *DripStrictServerImplementation) ListAllNodes(
 		}, nil
 	}
 
+	// Convert database nodes to API nodes
 	apiNodes := make([]drip.Node, 0, len(nodeResults.Nodes))
 	for _, dbNode := range nodeResults.Nodes {
 		apiNode := mapper.DbNodeToApiNode(dbNode)
-		if dbNode.Edges.Versions != nil && len(dbNode.Edges.Versions) > 0 {
-			latestVersion := dbNode.Edges.Versions[0]
-			apiNode.LatestVersion = mapper.DbNodeVersionToApiNodeVersion(latestVersion)
+
+		// attach information of latest version if available
+		if len(dbNode.Edges.Versions) > 0 {
+			apiNode.LatestVersion = mapper.DbNodeVersionToApiNodeVersion(dbNode.Edges.Versions[0])
 		}
+
+		// Map publisher information
 		apiNode.Publisher = mapper.DbPublisherToApiPublisher(dbNode.Edges.Publisher, false)
 		apiNodes = append(apiNodes, *apiNode)
 	}
@@ -341,51 +308,77 @@ func (s *DripStrictServerImplementation) ListAllNodes(
 	}, nil
 }
 
+// SearchNodes implements drip.StrictServerInterface.
+func (s *DripStrictServerImplementation) SearchNodes(ctx context.Context, request drip.SearchNodesRequestObject) (drip.SearchNodesResponseObject, error) {
+	log.Ctx(ctx).Info().Msg("SearchNodes request received")
+
+	// Set default values for pagination parameters
+	page := 1
+	if request.Params.Page != nil {
+		page = *request.Params.Page
+	}
+	limit := 10
+	if request.Params.Limit != nil {
+		limit = *request.Params.Limit
+	}
+
+	f := &drip_services.NodeFilter{}
+	if request.Params.Search != nil {
+		f.Search = *request.Params.Search
+	}
+	if request.Params.IncludeBanned != nil {
+		f.IncludeBanned = *request.Params.IncludeBanned
+	}
+	// List nodes from the registry service
+	nodeResults, err := s.RegistryService.ListNodes(ctx, s.Client, page, limit, f)
+	if err != nil {
+		log.Ctx(ctx).Error().Msgf("Failed to search nodes w/ err: %v", err)
+		return drip.SearchNodes500JSONResponse{Message: "Failed to search nodes", Error: err.Error()}, err
+	}
+
+	if len(nodeResults.Nodes) == 0 {
+		log.Ctx(ctx).Info().Msg("No nodes found")
+		return drip.SearchNodes200JSONResponse{
+			Nodes:      &[]drip.Node{},
+			Total:      &nodeResults.Total,
+			Page:       &nodeResults.Page,
+			Limit:      &nodeResults.Limit,
+			TotalPages: &nodeResults.TotalPages,
+		}, nil
+	}
+
+	apiNodes := make([]drip.Node, 0, len(nodeResults.Nodes))
+	for _, dbNode := range nodeResults.Nodes {
+		apiNode := mapper.DbNodeToApiNode(dbNode)
+		if dbNode.Edges.Versions != nil && len(dbNode.Edges.Versions) > 0 {
+			latestVersion, err := s.RegistryService.GetLatestNodeVersion(ctx, s.Client, dbNode.ID)
+			if err == nil {
+				apiNode.LatestVersion = mapper.DbNodeVersionToApiNodeVersion(latestVersion)
+			} else {
+				log.Ctx(ctx).Error().Msgf("Failed to get latest version for node %s w/ err: %v", dbNode.ID, err)
+			}
+		}
+		apiNode.Publisher = mapper.DbPublisherToApiPublisher(dbNode.Edges.Publisher, false)
+		apiNodes = append(apiNodes, *apiNode)
+	}
+
+	log.Ctx(ctx).Info().Msgf("Found %d nodes", len(apiNodes))
+	return drip.SearchNodes200JSONResponse{
+		Nodes:      &apiNodes,
+		Total:      &nodeResults.Total,
+		Page:       &nodeResults.Page,
+		Limit:      &nodeResults.Limit,
+		TotalPages: &nodeResults.TotalPages,
+	}, nil
+}
+
 func (s *DripStrictServerImplementation) DeleteNode(
 	ctx context.Context, request drip.DeleteNodeRequestObject) (drip.DeleteNodeResponseObject, error) {
 
 	log.Ctx(ctx).Info().Msgf("DeleteNode request received for node ID: %s", request.NodeId)
 
-	userId, err := mapper.GetUserIDFromContext(ctx)
-	if err != nil {
-		log.Ctx(ctx).Error().Msgf("Failed to get user ID from context w/ err: %v", err)
-		return drip.DeleteNode404JSONResponse{Message: "Invalid user ID"}, err
-	}
-
-	err = s.RegistryService.AssertPublisherPermissions(
-		ctx, s.Client, request.PublisherId, userId, []schema.PublisherPermissionType{schema.PublisherPermissionTypeOwner})
-	switch {
-	case ent.IsNotFound(err):
-		log.Ctx(ctx).Info().Msgf("Publisher with ID %s not found", request.PublisherId)
-		return drip.DeleteNode404JSONResponse{Message: "Publisher not found"}, nil
-
-	case drip_services.IsPermissionError(err):
-		log.Ctx(ctx).Error().Msgf(
-			"Permission denied for user ID %s on publisher ID %s w/ err: %v", userId, request.PublisherId, err)
-		return drip.DeleteNode403JSONResponse{}, err
-
-	case err != nil:
-		log.Ctx(ctx).Error().Msgf("Failed to assert publisher permission %s w/ err: %v", request.PublisherId, err)
-		return drip.DeleteNode500JSONResponse{Message: "Failed to assert publisher permission", Error: err.Error()}, err
-	}
-
-	err = s.RegistryService.AssertNodeBelongsToPublisher(ctx, s.Client, request.PublisherId, request.NodeId)
-	switch {
-	case ent.IsNotFound(err):
-		log.Ctx(ctx).Info().Msgf("Publisher with ID %s not found", request.PublisherId)
-		return drip.DeleteNode404JSONResponse{Message: "Publisher not found"}, nil
-
-	case drip_services.IsPermissionError(err):
-		log.Ctx(ctx).Error().Msgf(
-			"Permission denied for user ID %s on publisher ID %s w/ err: %v", userId, request.PublisherId, err)
-		return drip.DeleteNode403JSONResponse{}, err
-
-	case err != nil:
-		return drip.DeleteNode500JSONResponse{Message: "Failed to assert publisher permission"}, err
-	}
-
-	err = s.RegistryService.DeleteNode(ctx, s.Client, request.NodeId)
-	if err != nil {
+	err := s.RegistryService.DeleteNode(ctx, s.Client, request.NodeId)
+	if err != nil && !ent.IsNotFound(err) {
 		log.Ctx(ctx).Error().Msgf("Failed to delete node %s w/ err: %v", request.NodeId, err)
 		return drip.DeleteNode500JSONResponse{Message: "Internal server error"}, err
 	}
@@ -427,41 +420,14 @@ func (s *DripStrictServerImplementation) UpdateNode(
 
 	log.Ctx(ctx).Info().Msgf("UpdateNode request received for node ID: %s", request.NodeId)
 
-	userId, err := mapper.GetUserIDFromContext(ctx)
-	if err != nil {
-		log.Ctx(ctx).Error().Msgf("Failed to get user ID from context w/ err: %v", err)
-		return drip.UpdateNode404JSONResponse{Message: "Invalid user ID"}, err
+	updateOneFunc := func(client *ent.Client) *ent.NodeUpdateOne {
+		return mapper.ApiUpdateNodeToUpdateFields(request.NodeId, request.Body, client)
 	}
-
-	err = s.RegistryService.AssertPublisherPermissions(
-		ctx, s.Client, request.PublisherId, userId, []schema.PublisherPermissionType{schema.PublisherPermissionTypeOwner})
-	switch {
-	case ent.IsNotFound(err):
-		log.Ctx(ctx).Info().Msgf("Publisher with ID %s not found", request.PublisherId)
-		return drip.UpdateNode404JSONResponse{Message: "Publisher not found"}, nil
-
-	case drip_services.IsPermissionError(err):
-		log.Ctx(ctx).Error().Msgf(
-			"Permission denied for user ID %s on publisher ID %s w/ err: %v", userId, request.PublisherId, err)
-		return drip.UpdateNode403JSONResponse{}, err
-
-	case err != nil:
-		log.Ctx(ctx).Error().Msgf("Failed to assert publisher permission %s w/ err: %v", request.PublisherId, err)
-		return drip.UpdateNode500JSONResponse{Message: "Failed to assert publisher permission", Error: err.Error()}, err
-	}
-
-	err = s.RegistryService.AssertNodeBelongsToPublisher(ctx, s.Client, request.PublisherId, request.NodeId)
+	updatedNode, err := s.RegistryService.UpdateNode(ctx, s.Client, updateOneFunc)
 	if ent.IsNotFound(err) {
 		log.Ctx(ctx).Error().Msgf("Node %s not found w/ err: %v", request.NodeId, err)
 		return drip.UpdateNode404JSONResponse{Message: "Not Found"}, nil
-	} else if err != nil {
-		log.Ctx(ctx).Error().Msgf("Node %s does not belong to publisher "+
-			"%s w/ err: %v", request.NodeId, request.PublisherId, err)
-		return drip.UpdateNode403JSONResponse{Message: "Forbidden"}, err
 	}
-
-	updateOne := mapper.ApiUpdateNodeToUpdateFields(request.NodeId, request.Body, s.Client)
-	updatedNode, err := s.RegistryService.UpdateNode(ctx, s.Client, updateOne)
 	if err != nil {
 		log.Ctx(ctx).Error().Msgf("Failed to update node %s w/ err: %v", request.NodeId, err)
 		return drip.UpdateNode500JSONResponse{Message: "Failed to update node", Error: err.Error()}, err
@@ -473,15 +439,19 @@ func (s *DripStrictServerImplementation) UpdateNode(
 
 func (s *DripStrictServerImplementation) ListNodeVersions(
 	ctx context.Context, request drip.ListNodeVersionsRequestObject) (drip.ListNodeVersionsResponseObject, error) {
-
 	log.Ctx(ctx).Info().Msgf("ListNodeVersions request received for node ID: %s", request.NodeId)
 
-	nodeVersions, err := s.RegistryService.ListNodeVersions(ctx, s.Client, request.NodeId)
+	apiStatus := mapper.ApiNodeVersionStatusesToDbNodeVersionStatuses(request.Params.Statuses)
+
+	nodeVersionsResult, err := s.RegistryService.ListNodeVersions(ctx, s.Client, &drip_services.NodeVersionFilter{
+		NodeId: request.NodeId,
+		Status: apiStatus,
+	})
 	if err != nil {
 		log.Ctx(ctx).Error().Msgf("Failed to list node versions for node %s w/ err: %v", request.NodeId, err)
 		return drip.ListNodeVersions500JSONResponse{Message: "Failed to list node versions", Error: err.Error()}, err
 	}
-
+	nodeVersions := nodeVersionsResult.NodeVersions
 	apiNodeVersions := make([]drip.NodeVersion, 0, len(nodeVersions))
 	for _, dbNodeVersion := range nodeVersions {
 		apiNodeVersions = append(apiNodeVersions, *mapper.DbNodeVersionToApiNodeVersion(dbNodeVersion))
@@ -495,18 +465,6 @@ func (s *DripStrictServerImplementation) PublishNodeVersion(
 	ctx context.Context, request drip.PublishNodeVersionRequestObject) (drip.PublishNodeVersionResponseObject, error) {
 	log.Ctx(ctx).Info().Msgf("PublishNodeVersion request received for node ID: %s", request.NodeId)
 
-	tokenValid, err := s.RegistryService.IsPersonalAccessTokenValidForPublisher(
-		ctx, s.Client, request.PublisherId, request.Body.PersonalAccessToken)
-	if err != nil {
-		log.Ctx(ctx).Error().Msgf("Token validation failed w/ err: %v", err)
-		return drip.PublishNodeVersion400JSONResponse{Message: "Failed to validate token", Error: err.Error()}, nil
-	}
-	if !tokenValid {
-		errMessage := "Invalid personal access token"
-		log.Ctx(ctx).Error().Msg(errMessage)
-		return drip.PublishNodeVersion400JSONResponse{Message: errMessage}, nil
-	}
-
 	// Check if node exists, create if not
 	node, err := s.RegistryService.GetNode(ctx, s.Client, request.NodeId)
 	if err != nil && !ent.IsNotFound(err) {
@@ -515,6 +473,10 @@ func (s *DripStrictServerImplementation) PublishNodeVersion(
 		return drip.PublishNodeVersion500JSONResponse{}, err
 	} else if err != nil {
 		node, err = s.RegistryService.CreateNode(ctx, s.Client, request.PublisherId, &request.Body.Node)
+		if mapper.IsErrorBadRequest(err) || ent.IsConstraintError(err) {
+			log.Ctx(ctx).Error().Msgf("Node creation failed w/ err: %v", err)
+			return drip.PublishNodeVersion400JSONResponse{Message: "Failed to create node", Error: err.Error()}, nil
+		}
 		if err != nil {
 			log.Ctx(ctx).Error().Msgf("Node creation failed w/ err: %v", err)
 			return drip.PublishNodeVersion500JSONResponse{Message: "Failed to create node", Error: err.Error()}, nil
@@ -524,14 +486,10 @@ func (s *DripStrictServerImplementation) PublishNodeVersion(
 	} else {
 		// TODO(james): distinguish between not found vs. nodes that belong to other publishers
 		// If node already exists, validate ownership
-		err = s.RegistryService.AssertNodeBelongsToPublisher(ctx, s.Client, request.PublisherId, node.ID)
-		if err != nil {
-			errMessage := "Node does not belong to Publisher."
-			log.Ctx(ctx).Error().Msgf("Node ownership validation failed w/ err: %v", err)
-			return drip.PublishNodeVersion403JSONResponse{Message: errMessage}, err
+		updateOneFunc := func(client *ent.Client) *ent.NodeUpdateOne {
+			return mapper.ApiUpdateNodeToUpdateFields(node.ID, &request.Body.Node, s.Client)
 		}
-		updateOne := mapper.ApiUpdateNodeToUpdateFields(node.ID, &request.Body.Node, s.Client)
-		_, err = s.RegistryService.UpdateNode(ctx, s.Client, updateOne)
+		_, err = s.RegistryService.UpdateNode(ctx, s.Client, updateOneFunc)
 		if err != nil {
 			errMessage := "Failed to update node: " + err.Error()
 			log.Ctx(ctx).Error().Msgf("Node update failed w/ err: %v", err)
@@ -543,6 +501,9 @@ func (s *DripStrictServerImplementation) PublishNodeVersion(
 	// Create node version
 	nodeVersionCreation, err := s.RegistryService.CreateNodeVersion(ctx, s.Client, request.PublisherId, node.ID, &request.Body.NodeVersion)
 	if err != nil {
+		if ent.IsConstraintError(err) {
+			return drip.PublishNodeVersion400JSONResponse{Message: "The node version already exists"}, nil
+		}
 		errMessage := "Failed to create node version: " + err.Error()
 		log.Ctx(ctx).Error().Msgf("Node version creation failed w/ err: %v", err)
 		return drip.PublishNodeVersion400JSONResponse{Message: errMessage}, err
@@ -562,51 +523,13 @@ func (s *DripStrictServerImplementation) UpdateNodeVersion(
 	log.Ctx(ctx).Info().Msgf("UpdateNodeVersion request received for node ID: "+
 		"%s, version ID: %s", request.NodeId, request.VersionId)
 
-	// Retrieve user ID from context
-	userId, err := mapper.GetUserIDFromContext(ctx)
-	if err != nil {
-		log.Ctx(ctx).Error().Msgf("Failed to get user ID from context w/ err: %v", err)
-		return drip.UpdateNodeVersion404JSONResponse{Message: "Invalid user ID"}, err
-	}
-
-	// Assert publisher permissions
-	err = s.RegistryService.AssertPublisherPermissions(
-		ctx, s.Client, request.PublisherId, userId, []schema.PublisherPermissionType{schema.PublisherPermissionTypeOwner})
-	switch {
-	case ent.IsNotFound(err):
-		log.Ctx(ctx).Info().Msgf("Publisher with ID %s not found", request.PublisherId)
-		return drip.UpdateNodeVersion404JSONResponse{Message: "Publisher not found"}, nil
-
-	case drip_services.IsPermissionError(err):
-		log.Ctx(ctx).Error().Msgf(
-			"Permission denied for user ID %s on publisher ID %s w/ err: %v", userId, request.PublisherId, err)
-		return drip.UpdateNodeVersion403JSONResponse{}, err
-
-	case err != nil:
-		log.Ctx(ctx).Error().Msgf("Failed to assert publisher permission %s w/ err: %v", request.PublisherId, err)
-		return drip.UpdateNodeVersion500JSONResponse{Message: "Failed to assert publisher permission", Error: err.Error()}, err
-	}
-
-	// Assert node belongs to publisher
-	err = s.RegistryService.AssertNodeBelongsToPublisher(ctx, s.Client, request.PublisherId, request.NodeId)
-	switch {
-	case ent.IsNotFound(err):
-		log.Ctx(ctx).Info().Msgf("Publisher with ID %s not found", request.PublisherId)
-		return drip.UpdateNodeVersion404JSONResponse{Message: "Publisher not found"}, nil
-
-	case drip_services.IsPermissionError(err):
-		errMessage := "Node does not belong to Publisher."
-		log.Ctx(ctx).Error().Msgf("Node ownership validation failed w/ err: %v", err)
-		return drip.UpdateNodeVersion404JSONResponse{Message: errMessage}, err
-
-	case err != nil:
-		log.Ctx(ctx).Error().Msgf("Failed to assert publisher permission %s w/ err: %v", request.PublisherId, err)
-		return drip.UpdateNodeVersion500JSONResponse{Message: "Failed to assert publisher permission", Error: err.Error()}, err
-	}
-
 	// Update node version
 	updateOne := mapper.ApiUpdateNodeVersionToUpdateFields(request.VersionId, request.Body, s.Client)
 	version, err := s.RegistryService.UpdateNodeVersion(ctx, s.Client, updateOne)
+	if ent.IsNotFound(err) {
+		log.Ctx(ctx).Error().Msgf("Node %s or it's version not found w/ err: %v", request.NodeId, err)
+		return drip.UpdateNodeVersion404JSONResponse{Message: "Not Found"}, nil
+	}
 	if err != nil {
 		errMessage := "Failed to update node version"
 		log.Ctx(ctx).Error().Msgf("Node version update failed w/ err: %v", err)
@@ -618,6 +541,34 @@ func (s *DripStrictServerImplementation) UpdateNodeVersion(
 		Changelog:  &version.Changelog,
 		Deprecated: &version.Deprecated,
 	}, nil
+}
+
+// PostNodeVersionReview implements drip.StrictServerInterface.
+func (s *DripStrictServerImplementation) PostNodeReview(ctx context.Context, request drip.PostNodeReviewRequestObject) (drip.PostNodeReviewResponseObject, error) {
+	log.Ctx(ctx).Info().Msgf("PostNodeReview request received for "+
+		"node ID: %s", request.NodeId)
+
+	if request.Params.Star < 1 || request.Params.Star > 5 {
+		log.Ctx(ctx).Error().Msgf("Invalid star received: %d", request.Params.Star)
+		return drip.PostNodeReview400Response{}, nil
+	}
+
+	userId, err := mapper.GetUserIDFromContext(ctx)
+	if err != nil {
+		log.Ctx(ctx).Error().Msgf("Failed to get user ID from context w/ err: %v", err)
+		return drip.PostNodeReview404JSONResponse{}, err
+	}
+
+	nv, err := s.RegistryService.AddNodeReview(ctx, s.Client, request.NodeId, userId, request.Params.Star)
+	if ent.IsNotFound(err) {
+		log.Ctx(ctx).Error().Msgf("Error retrieving node version w/ err: %v", err)
+		return drip.PostNodeReview404JSONResponse{}, nil
+	}
+
+	node := mapper.DbNodeToApiNode(nv)
+	log.Ctx(ctx).Info().Msgf("Node review for %s stored successfully", request.NodeId)
+	return drip.PostNodeReview200JSONResponse(*node), nil
+
 }
 
 func (s *DripStrictServerImplementation) DeleteNodeVersion(
@@ -638,7 +589,7 @@ func (s *DripStrictServerImplementation) GetNodeVersion(
 	log.Ctx(ctx).Info().Msgf("GetNodeVersion request received for "+
 		"node ID: %s, version ID: %s", request.NodeId, request.VersionId)
 
-	nodeVersion, err := s.RegistryService.GetNodeVersion(ctx, s.Client, request.NodeId, request.VersionId)
+	nodeVersion, err := s.RegistryService.GetNodeVersionByVersion(ctx, s.Client, request.NodeId, request.VersionId)
 	if ent.IsNotFound(err) {
 		log.Ctx(ctx).Error().Msgf("Error retrieving node version w/ err: %v", err)
 		return drip.GetNodeVersion404JSONResponse{}, nil
@@ -660,22 +611,6 @@ func (s *DripStrictServerImplementation) GetNodeVersion(
 func (s *DripStrictServerImplementation) ListPersonalAccessTokens(
 	ctx context.Context, request drip.ListPersonalAccessTokensRequestObject) (drip.ListPersonalAccessTokensResponseObject, error) {
 	log.Ctx(ctx).Info().Msgf("ListPersonalAccessTokens request received for publisher ID: %s", request.PublisherId)
-
-	// Retrieve user ID from context
-	userId, err := mapper.GetUserIDFromContext(ctx)
-	if err != nil {
-		log.Ctx(ctx).Error().Msgf("Failed to get user ID from context w/ err: %v", err)
-		return drip.ListPersonalAccessTokens404JSONResponse{Message: "Invalid user ID"}, err
-	}
-
-	// Assert publisher permissions
-	err = s.RegistryService.AssertPublisherPermissions(
-		ctx, s.Client, request.PublisherId, userId, []schema.PublisherPermissionType{schema.PublisherPermissionTypeOwner})
-	if err != nil {
-		errMessage := "User does not have the necessary permissions: " + err.Error()
-		log.Ctx(ctx).Error().Msgf("Permission assertion failed w/ err: %v", err)
-		return drip.ListPersonalAccessTokens403JSONResponse{Message: errMessage}, err
-	}
 
 	// List personal access tokens
 	personalAccessTokens, err := s.RegistryService.ListPersonalAccessTokens(ctx, s.Client, request.PublisherId)
@@ -700,31 +635,6 @@ func (s *DripStrictServerImplementation) CreatePersonalAccessToken(
 
 	log.Ctx(ctx).Info().Msgf("CreatePersonalAccessToken request received "+
 		"for publisher ID: %s", request.PublisherId)
-
-	// Retrieve user ID from context
-	userId, err := mapper.GetUserIDFromContext(ctx)
-	if err != nil {
-		log.Ctx(ctx).Error().Msgf("Failed to get user ID from context w/ err: %v", err)
-		return drip.CreatePersonalAccessToken400JSONResponse{Message: "Invalid user ID"}, err
-	}
-
-	// Assert publisher permissions
-	err = s.RegistryService.AssertPublisherPermissions(ctx, s.Client, request.PublisherId,
-		userId, []schema.PublisherPermissionType{schema.PublisherPermissionTypeOwner})
-	switch {
-	case ent.IsNotFound(err):
-		log.Ctx(ctx).Info().Msgf("Publisher with ID %s not found", request.PublisherId)
-		return drip.CreatePersonalAccessToken400JSONResponse{Message: "Publisher not found"}, nil
-
-	case drip_services.IsPermissionError(err):
-		log.Ctx(ctx).Error().Msgf(
-			"Permission denied for user ID %s on publisher ID %s w/ err: %v", userId, request.PublisherId, err)
-		return drip.CreatePersonalAccessToken403JSONResponse{}, err
-
-	case err != nil:
-		log.Ctx(ctx).Error().Msgf("Failed to assert publisher permission %s w/ err: %v", request.PublisherId, err)
-		return drip.CreatePersonalAccessToken500JSONResponse{Message: "Failed to assert publisher permission", Error: err.Error()}, err
-	}
 
 	// Create personal access token
 	description := ""
@@ -757,24 +667,6 @@ func (s *DripStrictServerImplementation) DeletePersonalAccessToken(
 	if err != nil {
 		log.Ctx(ctx).Error().Msgf("Failed to get user ID from context w/ err: %v", err)
 		return drip.DeletePersonalAccessToken404JSONResponse{Message: "Invalid user ID"}, err
-	}
-
-	// Assert publisher permissions
-	err = s.RegistryService.AssertPublisherPermissions(
-		ctx, s.Client, request.PublisherId, userId, []schema.PublisherPermissionType{schema.PublisherPermissionTypeOwner})
-	switch {
-	case ent.IsNotFound(err):
-		log.Ctx(ctx).Info().Msgf("Publisher with ID %s not found", request.PublisherId)
-		return drip.DeletePersonalAccessToken404JSONResponse{Message: "Publisher not found"}, nil
-
-	case drip_services.IsPermissionError(err):
-		log.Ctx(ctx).Error().Msgf(
-			"Permission denied for user ID %s on publisher ID %s w/ err: %v", userId, request.PublisherId, err)
-		return drip.DeletePersonalAccessToken403JSONResponse{}, err
-
-	case err != nil:
-		log.Ctx(ctx).Error().Msgf("Failed to assert publisher permission %s w/ err: %v", request.PublisherId, err)
-		return drip.DeletePersonalAccessToken500JSONResponse{Message: "Failed to assert publisher permission", Error: err.Error()}, err
 	}
 
 	// Assert access token belongs to publisher
@@ -813,7 +705,7 @@ func (s *DripStrictServerImplementation) InstallNode(
 	log.Ctx(ctx).Info().Msgf("InstallNode request received for node ID: %s", request.NodeId)
 
 	// Get node
-	_, err := s.RegistryService.GetNode(ctx, s.Client, request.NodeId)
+	node, err := s.RegistryService.GetNode(ctx, s.Client, request.NodeId)
 	if ent.IsNotFound(err) {
 		log.Ctx(ctx).Error().Msgf("Error retrieving node w/ err: %v", err)
 		return drip.InstallNode404JSONResponse{Message: "Node not found"}, nil
@@ -835,6 +727,12 @@ func (s *DripStrictServerImplementation) InstallNode(
 			log.Ctx(ctx).Error().Msgf("Error retrieving latest node version w/ err: %v", err)
 			return drip.InstallNode500JSONResponse{Message: errMessage}, err
 		}
+		_, err = s.RegistryService.RecordNodeInstalation(ctx, s.Client, node)
+		if err != nil {
+			errMessage := "Failed to get increment number of node version install: " + err.Error()
+			log.Ctx(ctx).Error().Msgf("Error incrementing number of latest node version install w/ err: %v", err)
+			return drip.InstallNode500JSONResponse{Message: errMessage}, err
+		}
 		mp.Track(ctx, []*mixpanel.Event{
 			mp.NewEvent("Install Node Latest", "", map[string]any{
 				"Node ID": request.NodeId,
@@ -845,7 +743,7 @@ func (s *DripStrictServerImplementation) InstallNode(
 			*mapper.DbNodeVersionToApiNodeVersion(nodeVersion),
 		), nil
 	} else {
-		nodeVersion, err := s.RegistryService.GetNodeVersion(ctx, s.Client, request.NodeId, *request.Params.Version)
+		nodeVersion, err := s.RegistryService.GetNodeVersionByVersion(ctx, s.Client, request.NodeId, *request.Params.Version)
 		if ent.IsNotFound(err) {
 			log.Ctx(ctx).Error().Msgf("Error retrieving node version w/ err: %v", err)
 			return drip.InstallNode404JSONResponse{Message: "Not found"}, nil
@@ -853,6 +751,12 @@ func (s *DripStrictServerImplementation) InstallNode(
 		if err != nil {
 			errMessage := "Failed to get specified node version: " + err.Error()
 			log.Ctx(ctx).Error().Msgf("Error retrieving node version w/ err: %v", err)
+			return drip.InstallNode500JSONResponse{Message: errMessage}, err
+		}
+		_, err = s.RegistryService.RecordNodeInstalation(ctx, s.Client, node)
+		if err != nil {
+			errMessage := "Failed to get increment number of node version install: " + err.Error()
+			log.Ctx(ctx).Error().Msgf("Error incrementing number of latest node version install w/ err: %v", err)
 			return drip.InstallNode500JSONResponse{Message: errMessage}, err
 		}
 		mp.Track(ctx, []*mixpanel.Event{
@@ -869,18 +773,8 @@ func (s *DripStrictServerImplementation) InstallNode(
 
 func (s *DripStrictServerImplementation) GetPermissionOnPublisherNodes(
 	ctx context.Context, request drip.GetPermissionOnPublisherNodesRequestObject) (drip.GetPermissionOnPublisherNodesResponseObject, error) {
-	userId, err := mapper.GetUserIDFromContext(ctx)
-	if err != nil {
-		return drip.GetPermissionOnPublisherNodes200JSONResponse{CanEdit: proto.Bool(false)}, nil
-	}
 
-	err = s.RegistryService.AssertPublisherPermissions(
-		ctx, s.Client, request.PublisherId, userId, []schema.PublisherPermissionType{schema.PublisherPermissionTypeOwner})
-	if err != nil {
-		return drip.GetPermissionOnPublisherNodes200JSONResponse{CanEdit: proto.Bool(false)}, nil
-	}
-
-	err = s.RegistryService.AssertNodeBelongsToPublisher(ctx, s.Client, request.PublisherId, request.NodeId)
+	err := s.RegistryService.AssertNodeBelongsToPublisher(ctx, s.Client, request.PublisherId, request.NodeId)
 	if err != nil {
 		return drip.GetPermissionOnPublisherNodes200JSONResponse{CanEdit: proto.Bool(false)}, nil
 	}
@@ -890,17 +784,224 @@ func (s *DripStrictServerImplementation) GetPermissionOnPublisherNodes(
 
 func (s *DripStrictServerImplementation) GetPermissionOnPublisher(
 	ctx context.Context, request drip.GetPermissionOnPublisherRequestObject) (drip.GetPermissionOnPublisherResponseObject, error) {
+
+	return drip.GetPermissionOnPublisher200JSONResponse{CanEdit: proto.Bool(true)}, nil
+}
+
+// BanPublisher implements drip.StrictServerInterface.
+func (s *DripStrictServerImplementation) BanPublisher(ctx context.Context, request drip.BanPublisherRequestObject) (drip.BanPublisherResponseObject, error) {
 	userId, err := mapper.GetUserIDFromContext(ctx)
 	if err != nil {
 		log.Ctx(ctx).Error().Msgf("Failed to get user ID from context w/ err: %v", err)
-		return drip.GetPermissionOnPublisher200JSONResponse{CanEdit: proto.Bool(false)}, err
+		return drip.BanPublisher401Response{}, nil
 	}
-
-	err = s.RegistryService.AssertPublisherPermissions(
-		ctx, s.Client, request.PublisherId, userId, []schema.PublisherPermissionType{schema.PublisherPermissionTypeOwner})
+	user, err := s.Client.User.Get(ctx, userId)
 	if err != nil {
-		return drip.GetPermissionOnPublisher200JSONResponse{CanEdit: proto.Bool(false)}, nil
+		log.Ctx(ctx).Error().Msgf("Failed to get user ID from context w/ err: %v", err)
+		return drip.BanPublisher401Response{}, nil
+	}
+	if !user.IsAdmin {
+		log.Ctx(ctx).Error().Msgf("User is not admin w/ err")
+		return drip.BanPublisher403JSONResponse{
+			Message: "User is not admin",
+		}, nil
 	}
 
-	return drip.GetPermissionOnPublisher200JSONResponse{CanEdit: proto.Bool(true)}, nil
+	err = s.RegistryService.BanPublisher(ctx, s.Client, request.PublisherId)
+	if ent.IsNotFound(err) {
+		log.Ctx(ctx).Error().Msgf("Publisher '%s' not found  w/ err: %v", request.PublisherId, err)
+		return drip.BanPublisher404JSONResponse{
+			Message: "Publisher not found",
+		}, nil
+	}
+	if err != nil {
+		log.Ctx(ctx).Error().Msgf("Error banning publisher w/ err: %v", err)
+		return drip.BanPublisher500JSONResponse{
+			Message: "Error banning publisher",
+			Error:   err.Error(),
+		}, nil
+	}
+	return drip.BanPublisher204Response{}, nil
+}
+
+// BanPublisherNode implements drip.StrictServerInterface.
+func (s *DripStrictServerImplementation) BanPublisherNode(ctx context.Context, request drip.BanPublisherNodeRequestObject) (drip.BanPublisherNodeResponseObject, error) {
+	userId, err := mapper.GetUserIDFromContext(ctx)
+	if err != nil {
+		log.Ctx(ctx).Error().Msgf("Failed to get user ID from context w/ err: %v", err)
+		return drip.BanPublisherNode401Response{}, nil
+	}
+	user, err := s.Client.User.Get(ctx, userId)
+	if err != nil {
+		log.Ctx(ctx).Error().Msgf("Failed to get user ID from context w/ err: %v", err)
+		return drip.BanPublisherNode401Response{}, nil
+	}
+	if !user.IsAdmin {
+		log.Ctx(ctx).Error().Msgf("User is not admin w/ err")
+		return drip.BanPublisherNode403JSONResponse{
+			Message: "User is not admin",
+		}, nil
+	}
+
+	err = s.RegistryService.BanNode(ctx, s.Client, request.PublisherId, request.NodeId)
+	if ent.IsNotFound(err) {
+		log.Ctx(ctx).Error().Msgf("Publisher '%s' or node '%s' not found  w/ err: %v", request.PublisherId, request.NodeId, err)
+		return drip.BanPublisherNode404JSONResponse{
+			Message: "Publisher or Node not found",
+		}, nil
+	}
+	if err != nil {
+		log.Ctx(ctx).Error().Msgf("Error banning node w/ err: %v", err)
+		return drip.BanPublisherNode500JSONResponse{
+			Message: "Error banning node",
+			Error:   err.Error(),
+		}, nil
+	}
+	return drip.BanPublisherNode204Response{}, nil
+
+}
+
+func (s *DripStrictServerImplementation) AdminUpdateNodeVersion(
+	ctx context.Context, request drip.AdminUpdateNodeVersionRequestObject) (drip.AdminUpdateNodeVersionResponseObject, error) {
+	userId, err := mapper.GetUserIDFromContext(ctx)
+	if err != nil {
+		log.Ctx(ctx).Error().Msgf("Failed to get user ID from context w/ err: %v", err)
+		return drip.AdminUpdateNodeVersion401Response{}, nil
+	}
+	user, err := s.Client.User.Get(ctx, userId)
+	if err != nil {
+		log.Ctx(ctx).Error().Msgf("Failed to get user ID from context w/ err: %v", err)
+		return drip.AdminUpdateNodeVersion401Response{}, nil
+	}
+	if !user.IsAdmin {
+		log.Ctx(ctx).Error().Msgf("User is not admin w/ err")
+		return drip.AdminUpdateNodeVersion403JSONResponse{
+			Message: "User is not admin",
+		}, nil
+	}
+
+	nodeVersion, err := s.RegistryService.GetNodeVersionByVersion(ctx, s.Client, request.NodeId, request.VersionNumber)
+	if err != nil {
+		log.Ctx(ctx).Error().Msgf("Error retrieving node version w/ err: %v", err)
+		if ent.IsNotFound(err) {
+			return drip.AdminUpdateNodeVersion404JSONResponse{}, nil
+		}
+		return drip.AdminUpdateNodeVersion500JSONResponse{}, err
+	}
+
+	dbNodeVersion := mapper.ApiNodeVersionStatusToDbNodeVersionStatus(*request.Body.Status)
+	statusReason := ""
+	if request.Body.StatusReason != nil {
+		statusReason = *request.Body.StatusReason
+	}
+	err = nodeVersion.Update().SetStatus(dbNodeVersion).SetStatusReason(statusReason).Exec(ctx)
+	if err != nil {
+		log.Ctx(ctx).Error().Msgf("Failed to update node version w/ err: %v", err)
+		return drip.AdminUpdateNodeVersion500JSONResponse{}, err
+	}
+
+	log.Ctx(ctx).Info().Msgf("Node version %s updated successfully", request.VersionNumber)
+	return drip.AdminUpdateNodeVersion200JSONResponse{
+		Status: request.Body.Status,
+	}, nil
+}
+
+func (s *DripStrictServerImplementation) SecurityScan(
+	ctx context.Context, request drip.SecurityScanRequestObject) (drip.SecurityScanResponseObject, error) {
+	minAge := 30 * time.Minute
+	if request.Params.MinAge != nil {
+		minAge = *request.Params.MinAge
+	}
+	maxNodes := 50
+	if request.Params.MaxNodes != nil {
+		maxNodes = *request.Params.MaxNodes
+	}
+	nodeVersionsResult, err := s.RegistryService.ListNodeVersions(ctx, s.Client, &drip_services.NodeVersionFilter{
+		Status:   []schema.NodeVersionStatus{schema.NodeVersionStatusPending},
+		MinAge:   minAge,
+		PageSize: maxNodes,
+		Page:     1,
+	})
+	nodeVersions := nodeVersionsResult.NodeVersions
+
+	log.Ctx(ctx).Info().Msgf("Found %d node versions to scan", len(nodeVersions))
+
+	if err != nil {
+		log.Ctx(ctx).Error().Msgf("Failed to list node versions w/ err: %v", err)
+		return drip.SecurityScan500JSONResponse{}, err
+	}
+
+	for _, nodeVersion := range nodeVersions {
+		err := s.RegistryService.PerformSecurityCheck(ctx, s.Client, nodeVersion)
+		if err != nil {
+			log.Ctx(ctx).Error().Msgf("Failed to perform security scan w/ err: %v", err)
+		}
+	}
+	return drip.SecurityScan200Response{}, nil
+}
+
+func (s *DripStrictServerImplementation) ListAllNodeVersions(
+	ctx context.Context, request drip.ListAllNodeVersionsRequestObject) (drip.ListAllNodeVersionsResponseObject, error) {
+	log.Ctx(ctx).Info().Msg("ListAllNodeVersions request received")
+
+	page := 1
+	if request.Params.Page != nil {
+		page = *request.Params.Page
+	}
+	pageSize := 10
+	if request.Params.PageSize != nil && *request.Params.PageSize < 100 {
+		pageSize = *request.Params.PageSize
+	}
+	f := &drip_services.NodeVersionFilter{
+		Page:     page,
+		PageSize: pageSize,
+	}
+
+	if request.Params.Statuses != nil {
+		f.Status = mapper.ApiNodeVersionStatusesToDbNodeVersionStatuses(request.Params.Statuses)
+	}
+
+	// List nodes from the registry service
+	nodeVersionResults, err := s.RegistryService.ListNodeVersions(ctx, s.Client, f)
+	if err != nil {
+		log.Ctx(ctx).Error().Msgf("Failed to list node versions w/ err: %v", err)
+		return drip.ListAllNodeVersions500JSONResponse{Message: "Failed to list node versions", Error: err.Error()}, nil
+	}
+
+	if len(nodeVersionResults.NodeVersions) == 0 {
+		log.Ctx(ctx).Info().Msg("No node versions found")
+		return drip.ListAllNodeVersions200JSONResponse{
+			Versions:   &[]drip.NodeVersion{},
+			Total:      &nodeVersionResults.Total,
+			Page:       &nodeVersionResults.Page,
+			PageSize:   &nodeVersionResults.Limit,
+			TotalPages: &nodeVersionResults.TotalPages,
+		}, nil
+	}
+
+	apiNodeVersions := make([]drip.NodeVersion, 0, len(nodeVersionResults.NodeVersions))
+	for _, dbNodeVersion := range nodeVersionResults.NodeVersions {
+		apiNodeVersions = append(apiNodeVersions, *mapper.DbNodeVersionToApiNodeVersion(dbNodeVersion))
+	}
+
+	log.Ctx(ctx).Info().Msgf("Found %d node versions", nodeVersionResults.Total)
+	return drip.ListAllNodeVersions200JSONResponse{
+		Versions:   &apiNodeVersions,
+		Total:      &nodeVersionResults.Total,
+		Page:       &nodeVersionResults.Page,
+		PageSize:   &nodeVersionResults.Limit,
+		TotalPages: &nodeVersionResults.TotalPages,
+	}, nil
+}
+
+func (s *DripStrictServerImplementation) ReindexNodes(ctx context.Context, request drip.ReindexNodesRequestObject) (res drip.ReindexNodesResponseObject, err error) {
+	log.Ctx(ctx).Info().Msg("ReindexNodes request received")
+	err = s.RegistryService.ReindexAllNodes(ctx, s.Client)
+	if err != nil {
+		log.Ctx(ctx).Error().Msgf("Failed to list node versions w/ err: %v", err)
+		return drip.ReindexNodes500JSONResponse{Message: "Failed to reindex nodes", Error: err.Error()}, nil
+	}
+
+	log.Ctx(ctx).Info().Msgf("Reindex nodes successful")
+	return drip.ReindexNodes200Response{}, nil
 }
